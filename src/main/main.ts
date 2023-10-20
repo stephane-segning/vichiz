@@ -12,8 +12,10 @@ import path from 'path';
 import { app, BrowserWindow, shell, ipcMain } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
+import pako from 'pako';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+import { decodeData, encodeData } from './encoding';
 
 class AppUpdater {
   constructor() {
@@ -29,6 +31,16 @@ ipcMain.on('ipc-example', async (event, arg) => {
   const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
   console.log(msgTemplate(arg));
   event.reply('ipc-example', msgTemplate('pong'));
+});
+
+ipcMain.on('data-encode', async (event, text: any) => {
+  const { error, data } = encodeData(text);
+  event.reply('data-encode', data, error);
+});
+
+ipcMain.on('data-decode', async (event, text: string) => {
+  const { error, data } = decodeData(text);
+  event.reply('data-decode', data, error);
 });
 
 if (process.env.NODE_ENV === 'production') {

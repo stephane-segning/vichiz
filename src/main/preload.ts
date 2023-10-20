@@ -1,25 +1,18 @@
 // Disable no-unused-vars, broken for spread args
 /* eslint no-unused-vars: off */
-import { contextBridge, ipcRenderer, IpcRendererEvent } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
 
 export type Channels = 'ipc-example';
 
 const electronHandler = {
-  ipcRenderer: {
-    sendMessage(channel: Channels, ...args: unknown[]) {
-      ipcRenderer.send(channel, ...args);
+  encode: {
+    encode(data: any, func: (...args: unknown[]) => void) {
+      ipcRenderer.once('data-encode', (_event, ...args) => func(...args));
+      ipcRenderer.send('data-encode', data);
     },
-    on(channel: Channels, func: (...args: unknown[]) => void) {
-      const subscription = (_event: IpcRendererEvent, ...args: unknown[]) =>
-        func(...args);
-      ipcRenderer.on(channel, subscription);
-
-      return () => {
-        ipcRenderer.removeListener(channel, subscription);
-      };
-    },
-    once(channel: Channels, func: (...args: unknown[]) => void) {
-      ipcRenderer.once(channel, (_event, ...args) => func(...args));
+    decode(text: string, func: (...args: unknown[]) => void) {
+      ipcRenderer.once('data-decode', (_event, ...args) => func(...args));
+      ipcRenderer.send('data-decode', text);
     },
   },
 };
@@ -27,3 +20,20 @@ const electronHandler = {
 contextBridge.exposeInMainWorld('electron', electronHandler);
 
 export type ElectronHandler = typeof electronHandler;
+
+declare global {
+  interface Window {
+    electron: {
+      encode: {
+        encode: <T>(
+          data: T,
+          callback: (result: string, error?: any) => void,
+        ) => void;
+        decode: <T>(
+          text: string,
+          callback: (result: T, error?: any) => void,
+        ) => void;
+      };
+    };
+  }
+}
