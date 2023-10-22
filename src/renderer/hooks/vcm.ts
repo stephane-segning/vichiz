@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import SimplePeer from 'simple-peer';
-import { Network } from 'ataraxia/src/Network';
+import { Room } from '../models/room';
 
 interface RemoteStreams {
   [id: string]: MediaStream;
@@ -10,7 +10,7 @@ interface RegisterPeer {
   [nodeId: string]: SimplePeer.Instance;
 }
 
-export const useVCM = (net: Network | null) => {
+export const useVCM = (room: Room) => {
   const [peers, setPeers] = useState<RegisterPeer>({});
   const [localStream, setLocalStream] = useState<MediaStream | undefined>();
   const [remoteStreams, setRemoteStreams] = useState<RemoteStreams>({});
@@ -123,10 +123,8 @@ export const useVCM = (net: Network | null) => {
   );
 
   useEffect(() => {
-    if (!net) return () => {};
-
     // Handle the incoming stream from a peer.
-    net.onNodeAvailable((node) => {
+    window.electron.ataraxia.onNodeAvailable(room.id, (node) => {
       const simplePeer = new SimplePeer({
         stream: localStream,
       });
@@ -139,7 +137,7 @@ export const useVCM = (net: Network | null) => {
         await node.send('WEBRTC_SIGNAL', data);
       });
 
-      node.onMessage((msg) => {
+      node.onMessage((msg: any) => {
         if (msg.type === 'WEBRTC_SIGNAL') {
           simplePeer.signal(msg.data);
         }
@@ -148,7 +146,7 @@ export const useVCM = (net: Network | null) => {
       setPeers((prev) => ({ ...prev, [node.id]: simplePeer }));
     });
 
-    net.onNodeUnavailable(async (node) => {
+    window.electron.ataraxia.onNodeUnavailable(room.id, async (node) => {
       peers[node.id].destroy();
     });
 
@@ -161,7 +159,7 @@ export const useVCM = (net: Network | null) => {
         localStream.getTracks().forEach((track) => track.stop());
       }
     };
-  }, [localStream, net, peers, remoteStreams]);
+  }, [localStream, peers, remoteStreams, room.id]);
 
   return {
     changeCamera,

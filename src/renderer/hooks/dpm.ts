@@ -1,8 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { TCPPeerMDNSDiscovery, TCPTransport } from 'ataraxia-tcp';
 import { useDispatch, useSelector } from 'react-redux';
-import { SharedSecretAuth } from 'ataraxia';
-import { Network } from 'ataraxia/src/Network';
 import { setRoom } from '../redux/room';
 import {
   currentHostSelector,
@@ -62,7 +59,6 @@ export const useDPM = (room: Room) => {
   const dispatch = useDispatch();
   const localPeerId = useSelector(currentHostSelector);
   const nextHost = useSelector(nextHostSelector);
-  const [net, setNet] = useState<Network | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
   const [activeNodes, setActiveNodes] = useState<string[]>([]);
@@ -72,11 +68,9 @@ export const useDPM = (room: Room) => {
   const sendMessage = useCallback(
     async (message: string, data: any) => {
       // Send a message to peers
-      if (net) {
-        await net.broadcast(message, data);
-      }
+      await window.electron.ataraxia.broadcast(room.id, message, data);
     },
-    [net],
+    [room.id],
   );
 
   useEffect(() => {
@@ -84,47 +78,31 @@ export const useDPM = (room: Room) => {
       async () => {
         const data = getPCPerformanceSpecs();
         setSpecs(data);
-
-        if (net) {
-          // Assuming we have a method to broadcast data to other peers
-          await net.broadcast('SPEC_DATA', data);
-        }
+        await sendMessage('SPEC_DATA', data);
       },
       10 * 60 * 1000,
     ); // Every 10 minutes
 
     return () => clearInterval(interval);
-  }, [net]);
+  }, [sendMessage]);
 
   useEffect(() => {
     let cancel: () => Promise<void> = async () => {};
 
     const init = async () => {
-      const network = new Network({
-        name: room.id,
-        transports: [
-          new TCPTransport({
-            discovery: new TCPPeerMDNSDiscovery(),
-            authentication: [
-              new SharedSecretAuth({
-                secret: room.secretToken,
-              }),
-            ],
-          }),
-        ],
-      });
+      await window.electron.ataraxia.create(room);
 
-      network.onNodeAvailable(async (node) => {
+      window.electron.ataraxia.onNodeAvailable(room.id, async (node) => {
         await node.send('ROOM_INFO', room);
         setActiveNodes((prev) => [...prev, node.id]);
       });
 
-      network.onNodeUnavailable((node) => {
+      window.electron.ataraxia.onNodeUnavailable(room.id, (node) => {
         // Handle a node leaving or becoming unavailable.
         setActiveNodes((prev) => prev.filter((id) => id !== node.id));
       });
 
-      network.onMessage((msg) => {
+      window.electron.ataraxia.onMessage(room.id, (msg) => {
         if (msg.type === 'ROOM_INFO') {
           // Store the room information in the Redux store.
           dispatch(setRoom(msg.data));
@@ -144,20 +122,18 @@ export const useDPM = (room: Room) => {
         }
       });
 
-      await network.join();
-      setNet(network);
       dispatch(setRoomId(room.id));
 
       cancel = async () => {
         if (localPeerId === nextHost) {
           const nextHostId = determineNextHost(peerScores);
           // Send this information to all peers
-          await network.broadcast('NEXT_HOST_UPDATE', nextHostId);
+          await sendMessage('NEXT_HOST_UPDATE', nextHostId);
           // Store this locally as well
           dispatch(setNextHost(nextHostId));
         }
-        await network.broadcast('HOST_GOODBYE', {});
-        await network.leave();
+
+        await window.electron.ataraxia.destroy(room.id);
       };
     };
 
@@ -166,7 +142,7 @@ export const useDPM = (room: Room) => {
     return () => {
       cancel();
     };
-  }, [dispatch, localPeerId, nextHost, peerScores, room]);
+  }, [dispatch, localPeerId, nextHost, peerScores, room, sendMessage]);
 
-  return { net, error, sendMessage, messages, activeNodes, specs };
+  return { error, sendMessage, messages, activeNodes, specs };
 };
