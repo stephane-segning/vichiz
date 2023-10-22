@@ -1,27 +1,25 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import * as _ from 'lodash';
+import { Room } from '../models/room';
 
-interface RoomState {
-  allRoomIds: string[];
-}
+type RoomState = Record<string, Room>;
 
-const initialState: RoomState = {
-  allRoomIds: [],
-};
+const initialState: RoomState = {};
 
 const roomSlice = createSlice({
   name: 'room',
   initialState,
   reducers: {
-    addRoomId: (state, action: PayloadAction<string>) => {
-      const prev = state.allRoomIds;
-      state.allRoomIds = _.uniq([...prev, action.payload]);
+    setRoom: (state, action: PayloadAction<Room>) => {
+      state[action.payload.id] = action.payload;
     },
   },
 });
 
 export const roomsSelector = (state: { room: RoomState }) =>
-  state.room.allRoomIds;
+  Object.values(state.room);
 
-export const { addRoomId } = roomSlice.actions;
+export const roomSelector = (roomId: string) => (state: { room: RoomState }) =>
+  state.room[roomId];
+
+export const { setRoom } = roomSlice.actions;
 export default roomSlice.reducer;

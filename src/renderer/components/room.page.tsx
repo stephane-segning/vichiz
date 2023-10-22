@@ -1,24 +1,18 @@
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { LogOut, MoreHorizontal, Save } from 'react-feather';
 import { useSelector } from 'react-redux';
-import { Clipboard, LogOut, MoreHorizontal } from 'react-feather';
-import { useConnection } from '../hooks/connection';
-import { hexConfigSelector } from '../redux/peer';
+import { useDPM } from '../hooks/dpm';
+import { useVCM } from '../hooks/vcm';
+import { roomSelector } from '../redux/room';
 
 export function RoomPage() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const { roomId } = useParams<{ roomId: string }>();
-  useConnection(roomId!, searchParams.get('hexConfig'));
+  const room = useSelector(roomSelector(roomId!));
+  const { net } = useDPM(room);
+  const { localStream } = useVCM(net);
 
-  const hexConfix = useSelector(hexConfigSelector);
-
-  const copyHexConfig = () => {
-    if (!hexConfix) {
-      return;
-    }
-
-    navigator.clipboard.writeText(hexConfix);
-  };
+  const exportRoomConfig = () => {};
 
   const logOut = () => {
     navigate('/');
@@ -28,7 +22,7 @@ export function RoomPage() {
     <div>
       <div className="navbar bg-primary text-primary-content">
         <div className="flex-1">
-          <span className="btn btn-ghost normal-case text-xl">{roomId}</span>
+          <span className="btn btn-ghost normal-case text-xl">{room.name}</span>
         </div>
         <div className="flex-none">
           <button
@@ -39,9 +33,9 @@ export function RoomPage() {
           </button>
           <button
             type="button"
-            onClick={copyHexConfig}
+            onClick={exportRoomConfig}
             className="btn btn-square btn-ghost">
-            <Clipboard />
+            <Save />
           </button>
           <button type="button" className="btn btn-square btn-ghost">
             <MoreHorizontal />

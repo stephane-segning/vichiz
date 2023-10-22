@@ -5,19 +5,17 @@ import { persistReducer, persistStore } from 'redux-persist';
 
 import { PersistConfig } from 'redux-persist/es/types';
 import roomReducer from './room';
-import peerReducer from './peer';
+import connectionReducer from './connection';
 
 const rootReducer = combineReducers({
   room: roomReducer,
-  peer: peerReducer,
-  // ... other reducers
+  connection: connectionReducer,
 });
 
 const persistConfig: PersistConfig<any> = {
   key: 'root',
   storage,
-  whitelist: ['room'], // only persist 'room'
-  blacklist: ['peer'], // do not persist 'peer'
+  blacklist: ['peer'],
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
