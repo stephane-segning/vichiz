@@ -337,6 +337,9 @@ devDependencies:
   sass-loader:
     specifier: ^13.3.2
     version: 13.3.2(sass@1.69.4)(webpack@5.89.0)
+  source-map-support:
+    specifier: ^0.5.21
+    version: 0.5.21
   style-loader:
     specifier: ^3.3.3
     version: 3.3.3(webpack@5.89.0)
@@ -2458,6 +2461,8 @@ packages:
       protons-runtime: 5.1.0
       uint8arraylist: 2.4.3
       uint8arrays: 4.0.6
+    transitivePeerDependencies:
+      - supports-color
     dev: false
 
   /@libp2p/interface-internal@0.1.6:
@@ -2694,6 +2699,8 @@ packages:
       protons-runtime: 5.1.0
       uint8arraylist: 2.4.3
       uint8arrays: 4.0.6
+    transitivePeerDependencies:
+      - supports-color
     dev: false
 
   /@libp2p/peer-id@2.0.4:
