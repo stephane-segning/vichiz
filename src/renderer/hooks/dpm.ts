@@ -83,7 +83,7 @@ export const useDPM = (room: Room) => {
       10 * 60 * 1000,
     ); // Every 10 minutes
 
-    return () => clearInterval(interval);
+    return () => clearInterval(interval as any);
   }, [sendMessage]);
 
   useEffect(() => {

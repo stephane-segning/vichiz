@@ -8,7 +8,12 @@ import webpackPaths from './webpack.paths';
 import { dependencies as externals } from '../../release/app/package.json';
 
 const configuration: webpack.Configuration = {
-  externals: [...Object.keys(externals || {})],
+  externals: [
+    ...Object.keys(externals || {}),
+    {
+      '@libp2p/tcp': 'commonjs2 @libp2p/tcp',
+    },
+  ],
 
   stats: 'errors-only',
 

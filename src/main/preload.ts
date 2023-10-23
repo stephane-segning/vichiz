@@ -3,8 +3,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { Room } from '../renderer/models/room';
 
-export type Channels = 'ipc-example';
-
 const electronHandler = {
   encode: {
     encode(data: any, func: (...args: unknown[]) => void) {
@@ -39,7 +37,12 @@ const electronHandler = {
       return ipcRenderer.sendSync('net-destroy');
     },
     async broadcast(roomId: string, type: string, data: any) {
-      return ipcRenderer.sendSync('net-broadcast', type, data);
+      return ipcRenderer.sendSync(
+        `net-broadcast-${roomId}`,
+        roomId,
+        type,
+        data,
+      );
     },
   },
 };

@@ -9,16 +9,14 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
-import pako from 'pako';
-import { Network, SharedSecretAuth } from 'ataraxia';
-import { TCPPeerMDNSDiscovery, TCPTransport } from 'ataraxia-tcp';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
-import { decodeData, encodeData } from './encoding';
-import { setNextHost } from '../renderer/redux/connection';
+import './encoding';
+
+import './dpm';
 
 class AppUpdater {
   constructor() {
@@ -29,81 +27,6 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-
-ipcMain.on('ipc-example', async (event, arg) => {
-  const msgTemplate = (pingPong: string) => `IPC test: ${pingPong}`;
-  console.log(msgTemplate(arg));
-  event.reply('ipc-example', msgTemplate('pong'));
-});
-
-ipcMain.on('data-encode', async (event, text: any) => {
-  const { error, data } = encodeData(text);
-  event.reply('data-encode', data, error);
-});
-
-ipcMain.on('data-decode', async (event, text: string) => {
-  const { error, data } = decodeData(text);
-  event.reply('data-decode', data, error);
-});
-
-const networks: Record<string, Network> = {};
-const cancel = async (roomId: string) => {
-  await networks[roomId].broadcast('HOST_GOODBYE', {});
-  await networks[roomId].leave();
-  delete networks[roomId];
-};
-ipcMain.on('net-create', async (event, room) => {
-  const network = new Network({
-    name: room.id,
-    transports: [
-      new TCPTransport({
-        discovery: new TCPPeerMDNSDiscovery(),
-        authentication: [
-          new SharedSecretAuth({
-            secret: room.secretToken,
-          }),
-        ],
-      }),
-    ],
-  });
-
-  network.onNodeAvailable(async (node) => {
-    ipcMain.emit(
-      `net-node-available-${room.id}`,
-      node,
-      (type: string, data: any) => node.send(type, data),
-    );
-  });
-
-  network.onNodeUnavailable((node) => {
-    // Handle a node leaving or becoming unavailable.
-    ipcMain.emit(
-      `net-node-unavailable-${room.id}`,
-      node,
-      (type: string, data: any) => node.send(type, data),
-    );
-  });
-
-  network.onMessage((msg) => {
-    ipcMain.emit(`net-message-${room.id}`, msg);
-  });
-
-  await network.join();
-
-  networks[room.id] = network;
-
-  event.reply('net-create', network.networkId);
-});
-
-ipcMain.on('net-destroy', async (event, roomId) => {
-  await cancel(roomId);
-  event.reply('net-destroy', true);
-});
-
-ipcMain.on('net-broadcast', async (event, roomId, type, data) => {
-  await networks[roomId].broadcast(type, data);
-  event.reply('net-broadcast', true);
-});
 
 if (process.env.NODE_ENV === 'production') {
   const sourceMapSupport = require('source-map-support');
