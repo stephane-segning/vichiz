@@ -2,15 +2,15 @@
 
 diesel::table! {
     noise_keys (id) {
-        id -> Nullable<Text>,
-        private -> Text,
-        public -> Text,
+        id -> Text,
+        private -> Binary,
+        public -> Binary,
     }
 }
 
 diesel::table! {
     rooms (id) {
-        id -> Nullable<Text>,
+        id -> Text,
         name -> Text,
     }
 }

@@ -68,7 +68,7 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
     // Create a Gossipsub topic
     let topic = gossipsub::IdentTopic::new("test-net");
     // subscribes to our topic
-    swarm.behaviour_mut().gossip_sub().subscribe(&topic)?;
+    swarm.behaviour_mut().gossip_sub_mut().subscribe(&topic)?;
 
     // Tell the swarm to listen on all interfaces and a random, OS-assigned
     // port.
@@ -107,13 +107,13 @@ pub async fn run_swarm(mut swarm: Swarm<AppBehaviour>) -> Result<()> {
             SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                 for (peer_id, _multiaddr) in list {
                     println!("mDNS discovered a new peer: {peer_id}");
-                    swarm.behaviour_mut().gossip_sub().add_explicit_peer(&peer_id);
+                    swarm.behaviour_mut().gossip_sub_mut().add_explicit_peer(&peer_id);
                 }
             }
             SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
                 for (peer_id, _multiaddr) in list {
                     println!("mDNS discover peer has expired: {peer_id}");
-                    swarm.behaviour_mut().gossip_sub().remove_explicit_peer(&peer_id);
+                    swarm.behaviour_mut().gossip_sub_mut().remove_explicit_peer(&peer_id);
                 }
             }
             SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: _ })) => {

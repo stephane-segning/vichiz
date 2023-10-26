@@ -7,7 +7,7 @@ use libp2p::identity::ecdsa;
 
 use crate::entities::noise::NoiseModel;
 use crate::models::error::*;
-use crate::services::schema::noise_keys::dsl::*;
+use crate::schema::noise_keys::dsl::*;
 
 pub struct NoiseKeyService {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -22,7 +22,7 @@ impl NoiseKeyService {
         let keypair = identity::Keypair::generate_ecdsa();
         let kp = keypair.try_into_ecdsa()?;
 
-        let entity = NoiseModel::new(room_id, kp.secret().to_bytes(), kp.public().to_bytes());
+        let entity = NoiseModel::from((room_id.to_string(), kp.secret().to_bytes(), kp.public().to_bytes()));
 
         Ok(entity)
     }
@@ -68,8 +68,6 @@ mod tests {
     use super::*;
     use diesel::r2d2::Pool;
     use diesel::r2d2::ConnectionManager;
-    use diesel::Connection;
-    use super::super::super::models::error::*;
 
     fn setup_test_db() -> Pool<ConnectionManager<SqliteConnection>> {
         let database_url = ":memory:"; // SQLite in-memory database

@@ -1,30 +1,19 @@
+use derive_more::From;
 use diesel::prelude::*;
+use getset::*;
 use serde::{Deserialize, Serialize};
-use crate::services::schema::rooms;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Queryable, Insertable, Identifiable)]
+use crate::schema::rooms;
+
+#[derive(From, Getters, MutGetters, Setters, Debug, Clone, Serialize, Deserialize, Queryable, Insertable, Identifiable)]
 #[diesel(table_name = rooms)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Room {
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub")]
     pub id: String,
+
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", get = "pub")]
     pub name: String,
-}
-
-impl Room {
-    pub fn new<S: Into<String>>(id: S, name: S) -> Self {
-        Self {
-            id: id.into(),
-            name: name.into(),
-        }
-    }
-
-    pub fn get_id(&self) -> &str {
-        &self.id
-    }
-
-    pub fn get_name(&self) -> &str {
-        &self.name
-    }
 }
 
 #[cfg(test)]
@@ -33,28 +22,28 @@ mod tests {
 
     #[test]
     fn test_room_initialization() {
-        let id = "test-room-id";
-        let name = "test-room-name";
+        let id = "test-room-id".to_string();
+        let name = "test-room-name".to_string();
 
-        let room = Room::new(id, name);
+        let room = Room::from((id.clone(), name.clone()));
 
-        assert_eq!(room.get_id(), id);
-        assert_eq!(room.get_name(), name);
+        assert_eq!(room.id().clone(), id);
+        assert_eq!(room.name().clone(), name);
     }
 
     #[test]
     fn test_get_id() {
-        let id = "sample-id";
-        let room = Room::new(id, "sample-name");
+        let id = "sample-id".to_string();
+        let room = Room::from((id.clone(), "sample-name".to_string()));
 
-        assert_eq!(room.get_id(), id);
+        assert_eq!(room.name().clone(), id);
     }
 
     #[test]
     fn test_get_name() {
-        let name = "sample-name";
-        let room = Room::new("sample-id", name);
+        let name = "sample-name".to_string();
+        let room = Room::from(("sample-id".to_string(), name.clone()));
 
-        assert_eq!(room.get_name(), name);
+        assert_eq!(room.name().clone(), name);
     }
 }

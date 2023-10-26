@@ -31,7 +31,7 @@ impl RustSDK {
         }
     }
 
-    pub fn create_room(&mut self, options: RoomOption) -> Result<Room> {
+    pub fn create_room(&self, options: RoomOption) -> Result<Room> {
         // Create noise keys for the room.
         let room_id = match options.id {
             None => Uuid::new_v4().to_string(),
@@ -40,13 +40,13 @@ impl RustSDK {
         self.noise_key_service.create_key(&room_id)?;
 
         // Create a Room and persist it.
-        let room = Room::new(room_id, options.name);
+        let room = Room::from((room_id, options.name));
         self.room_service.create_room(&room)?;
 
         Ok(room)
     }
 
-    pub async fn start_room(&self, data: ConnectionData) -> Result<()> {
+    pub fn start_room(&self, data: ConnectionData) -> Result<()> {
         // Start the room.
         let room = match self.room_service.get_room(&data.room_id) {
             Ok(r) => r,

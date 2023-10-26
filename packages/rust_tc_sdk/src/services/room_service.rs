@@ -5,7 +5,7 @@ use diesel::sqlite::SqliteConnection;
 
 use crate::entities::room::Room;
 use crate::models::error::*;
-use crate::services::schema::rooms::dsl::*;
+use crate::schema::rooms::dsl::*;
 
 pub struct RoomService {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -17,11 +17,10 @@ impl RoomService {
     }
 
     pub fn create_room(&self, room: &Room) -> Result<Room> {
-        let new_room = Room::new(room.get_id(), room.get_name());
         let mut conn = self.db_pool.get()?;
 
         diesel::insert_into(rooms)
-            .values(&new_room)
+            .values(&room.clone())
             .execute(&mut conn)?;
 
         Ok(room.clone())
@@ -62,10 +61,11 @@ impl RoomService {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use diesel::r2d2::{ConnectionManager, Pool};
+
     use crate::entities::room::Room;
-    use crate::services::schema::rooms;
+
+    use super::*;
 
     fn setup_database() -> Pool<ConnectionManager<SqliteConnection>> {
         let manager = ConnectionManager::<SqliteConnection>::new("sqlite::memory:");
@@ -84,7 +84,7 @@ mod tests {
     fn test_create_room() {
         let pool = setup_database();
         let service = RoomService::new(pool);
-        let room = Room::new("123", "Test Room");
+        let room = Room::from(("123".to_string(), "Test Room".to_string()));
 
         let result = service.create_room(&room);
         assert!(result.is_ok());
@@ -94,11 +94,11 @@ mod tests {
     fn test_get_room() {
         let pool = setup_database();
         let service = RoomService::new(pool);
-        let room = Room::new("123", "Test Room");
+        let room = Room::from(("123".to_string(), "Test Room".to_string()));
 
         service.create_room(&room).unwrap();
         let fetched_room = service.get_room("123");
-        assert_eq!(fetched_room.unwrap().get_name(), "Test Room");
+        assert_eq!(fetched_room.unwrap().name(), "Test Room");
     }
 
     // Similarly, you can add tests for update_room, delete_room, and get_rooms.

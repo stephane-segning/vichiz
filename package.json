@@ -92,6 +92,7 @@
     "react-router-dom": "^6.17.0",
     "redux": "^4.2.1",
     "redux-persist": "^6.0.0",
+    "rust-tc-sdk": "link:packages/rust_tc_sdk",
     "simple-peer": "^9.11.1",
     "webrtc": "^1.14.1",
     "yup": "^1.3.2"

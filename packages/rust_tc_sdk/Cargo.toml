@@ -26,9 +26,13 @@ libsqlite3-sys = { version = "0", features = ["bundled"] }
 
 serde = "1.0.189"
 serde_json = "1.0.107"
+neon-serde3 = "0.10.0"
+
+getset = "0.1.2"
+derive_more = "0.99.11"
 
 [dependencies.neon]
-version = "0.10"
+version = "0.10.1"
 default-features = false
 features = ["napi-6"]
 

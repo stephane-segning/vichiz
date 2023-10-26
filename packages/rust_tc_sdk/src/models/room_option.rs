@@ -1,13 +1,20 @@
+use getset::Getters;
+use serde::*;
+
+#[derive(Getters, Serialize, Debug, Deserialize)]
 pub struct RoomOption {
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", get = "pub")]
     pub id: Option<String>,
+
+    #[getset(get_copy = "pub", set = "pub", get_mut = "pub", get = "pub")]
     pub name: String,
 }
 
 impl RoomOption {
-    pub fn new(id: Option<&str>, name: &str) -> Self {
+    pub fn new<S: Into<String>>(id: Option<S>, name: S) -> Self {
         Self {
-            id: id.map(|id| id.to_string()),
-            name: name.to_string(),
+            id: id.map(|s| s.into()),
+            name: name.into(),
         }
     }
 }
@@ -18,12 +25,11 @@ mod tests {
 
     #[test]
     fn test_room_option_new_with_id() {
-        let id = Some("123");
         let name = "Test Room";
 
-        let room_option = RoomOption::new(id, name);
+        let room_option = RoomOption::new(None, name);
 
-        assert_eq!(room_option.id, id.map(|s| s.to_string()));
+        assert_eq!(room_option.id, None);
         assert_eq!(room_option.name, name);
     }
 

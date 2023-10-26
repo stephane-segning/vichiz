@@ -1,6 +1,6 @@
-pub mod noise_key_service;
-pub mod room_service;
-pub mod connection;
-pub mod schema;
-pub mod sdk;
-pub mod network;
+pub(crate) mod noise_key_service;
+pub(crate) mod room_service;
+pub(crate) mod connection;
+pub(crate) mod sdk;
+pub(crate) mod network;
+pub(crate) mod setup;
