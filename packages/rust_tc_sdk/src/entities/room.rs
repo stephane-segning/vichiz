@@ -5,21 +5,24 @@ use serde::{Deserialize, Serialize};
 #[diesel(table_name = crate::services::schema::rooms)]
 #[diesel(check_for_backend(diesel::sqlite::Sqlite))]
 pub struct Room {
-  pub id: String,
-  pub name: String,
+    pub id: String,
+    pub name: String,
 }
 
 impl Room {
-  pub fn new(id: String, name: String) -> Self {
-    Self { id, name }
-  }
+    pub fn new<S: Into<String>>(id: S, name: S) -> Self {
+        Self {
+            id: id.into(),
+            name: name.into(),
+        }
+    }
 
-  pub fn get_id(&self) -> &String {
-    &self.id
-  }
+    pub fn get_id(&self) -> &str {
+        &self.id
+    }
 
-  pub fn get_name(&self) -> &String {
-    &self.name
-  }
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
 }
 
