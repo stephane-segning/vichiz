@@ -8,12 +8,7 @@ import webpackPaths from './webpack.paths';
 import { dependencies as externals } from '../../release/app/package.json';
 
 const configuration: webpack.Configuration = {
-  externals: [
-    ...Object.keys(externals || {}),
-    {
-      '@libp2p/tcp': 'commonjs2 @libp2p/tcp',
-    },
-  ],
+  externals: [...Object.keys(externals || {})],
 
   stats: 'errors-only',
 
@@ -28,7 +23,7 @@ const configuration: webpack.Configuration = {
             // Remove this line to enable type checking in webpack builds
             transpileOnly: true,
             compilerOptions: {
-              module: 'esnext',
+              module: 'ES2022',
             },
           },
         },

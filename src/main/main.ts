@@ -16,8 +16,6 @@ import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
 import './encoding';
 
-import './dpm';
-
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';

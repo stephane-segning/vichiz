@@ -1,19 +1,18 @@
-use neon::prelude::*;
 use uuid::Uuid;
 
-use crate::models::error::Error;
-use crate::models::room::{Room, RoomOption};
+use crate::entities::room::Room;
+use crate::models::connection_data::ConnectionData;
+use crate::models::error::*;
+use crate::models::room_option::RoomOption;
+use crate::models::rust_sdk_options::*;
 use crate::services::connection::establish_connection;
+use crate::services::network::{create_private_network, run_swarm};
 use crate::services::noise_key_service::NoiseKeyService;
 use crate::services::room_service::RoomService;
 
 pub struct RustSDK {
   room_service: RoomService,
   noise_key_service: NoiseKeyService,
-}
-
-pub struct RustSDKOptions {
-  pub db_url: Option<String>,
 }
 
 impl RustSDK {
@@ -30,7 +29,7 @@ impl RustSDK {
     }
   }
 
-  pub fn create_room(&mut self, options: RoomOption) -> Result<Room, Error> {
+  pub fn create_room(&mut self, options: RoomOption) -> Result<Room> {
     // Create noise keys for the room.
     let room_id = match options.id {
       None => Uuid::new_v4().to_string(),
@@ -38,63 +37,54 @@ impl RustSDK {
     };
     self.noise_key_service.create_key(&room_id)?;
 
-    // Create a RoomEntity and persist it.
+    // Create a Room and persist it.
     let room = Room::new(room_id.clone(), options.name.clone());
-    self.room_service.create_room(room.clone())?;
-
-    // Create a Room object and store it in the SDK's internal state.
-    self.rooms.insert(room_id.clone(), room.clone());
+    self.room_service.create_room(&room)?;
 
     Ok(room)
   }
 
-  pub fn start_room(&self, room_id: &String) -> Result<(), Error> {
+  pub async fn start_room(&self, data: ConnectionData) -> Result<()> {
     // Start the room.
-    let room = match self.room_service.get_room(room_id) {
+    let room = match self.room_service.get_room(&data.room_id) {
       Ok(r) => r,
       Err(_) => panic!("Room not found")
     };
 
+    let keypair = match self.noise_key_service.get_key(&data.room_id) {
+      Ok(k) => k,
+      Err(_) => panic!("Key not found")
+    };
 
+    let swarm = create_private_network(room, &data, keypair).await?;
+    let _ = run_swarm(swarm).await;
 
     Ok(())
   }
 
-  pub fn clean_up(&self) -> Result<(), Error> {
-    let room_ids: Vec<String> = self.rooms.keys().cloned().collect();
+  pub fn clean_up(&self) -> Result<()> {
+    let room_ids = self.room_service.get_rooms()?;
 
-    for room_id in room_ids {
-      self.remove_room(room_id)?;
+    for Room { id, .. } in room_ids {
+      self.remove_room(id)?;
     }
 
     Ok(())
   }
 
-  pub fn remove_room(&self, room_id: String) -> Result<(), Error> {
+  pub fn remove_room(&self, room_id: String) -> Result<()> {
     // Delete the room entity from the database using the RoomService.
-    self.room_service.delete_room(room_id.clone())?;
+    self.room_service.delete_room(&room_id)?;
 
     // Delete the associated noise keys using the NoiseKeyService.
-    self.noise_key_service.delete_key(room_id.clone())?;
-
-    // Remove the room from the SDK's internal state.
-    self.rooms.remove(room_id);
+    self.noise_key_service.delete_key(&room_id)?;
 
     Ok(())
   }
 
-  pub fn get_rooms(&self) -> Result<Vec<Room>, Error> {
+  pub fn get_rooms(&self) -> Result<Vec<Room>> {
     // Use the RoomService to fetch rooms from the database.
-    let room_entities = self.room_service.get_rooms()?;
-
-    // Convert RoomEntity instances to Room instances.
-    let rooms: Vec<Room> = room_entities
-      .iter()
-      .map(|room_entity| {
-        Room::new(room_entity.room_id.clone(), room_entity.name.clone())
-      })
-      .collect();
-
+    let rooms = self.room_service.get_rooms()?;
     Ok(rooms)
   }
 }

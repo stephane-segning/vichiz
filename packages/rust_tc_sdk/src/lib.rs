@@ -1,42 +1,41 @@
 use neon::prelude::*;
-use state::InitCell;
+use std::sync::{Mutex};
+use lazy_static::lazy_static;
 
-use crate::services::sdk::{RustSDK, RustSDKOptions};
+use crate::models::rust_sdk_options::RustSDKOptions;
+use crate::services::sdk::{RustSDK};
 
 mod models;
 mod services;
 mod entities;
 
-static mut CONFIG: InitCell<RustSDK> = InitCell::new();
+lazy_static! {
+    static ref CONFIG: Mutex<Option<RustSDK>> = Mutex::new(None);
+}
 
-unsafe fn stop_sdk(mut cx: FunctionContext) -> NeonResult<()> {
-  let clean_up = cx.argument::<Option<bool>>(0)?;
+fn stop_sdk(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+  let clean_up = cx.argument::<JsBoolean>(0)?.value(&mut cx);
 
-  match CONFIG.take() {
-    None => {}
-    Some(mut sdk) => {
-      if clean_up.unwrap_or(false) {
-        sdk.clean_up().expect("Could not clean up SDK");
-      }
-
-      CONFIG.reset();
+  let mut config_guard = CONFIG.lock().or_else(|e| panic!("Failed to lock config {}", e));
+  if let Some(sdk) = &mut *config_guard {
+    if clean_up {
+      sdk.clean_up().unwrap_or_else(|e| panic!("Failed to clean up SDK {}", e));
     }
   }
 
-  Ok(())
+  Ok(cx.undefined())
 }
 
-unsafe fn start_sdk(mut cx: FunctionContext) -> NeonResult<()> {
-  CONFIG.get_or_init(|| {
-    let mut db_url = cx.argument::<Option<String>>(0)?;
+fn start_sdk(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+  let db_url = cx.argument::<JsString>(0)?.value(&mut cx);
 
-    let options = RustSDKOptions {
-      db_url: db_url.take(),
-    };
-    RustSDK::new(options)
-  });
+  let options = RustSDKOptions::new(db_url);
 
-  Ok(())
+  let sdk = RustSDK::new(options);
+  let mut config_guard = CONFIG.lock().or_else(|e| panic!("Failed to lock config {}", e));
+  *config_guard = Some(sdk);
+
+  Ok(cx.undefined())
 }
 
 #[neon::main]

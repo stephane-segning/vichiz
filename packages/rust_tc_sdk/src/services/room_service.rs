@@ -1,10 +1,10 @@
-use diesel::row::NamedRow;
 use diesel::{ExpressionMethods, QueryResult, RunQueryDsl};
-use diesel::sqlite::SqliteConnection;
 use diesel::r2d2::*;
-use crate::entities::room_entity::RoomEntity;
-use crate::models::room::Room;
-use crate::services::schema::rooms::dsl::{id as room_id, rooms};
+use diesel::sqlite::SqliteConnection;
+use diesel::prelude::*;
+
+use crate::entities::room::Room;
+use crate::models::error::*;
 
 pub struct RoomService {
   db_pool: Pool<ConnectionManager<SqliteConnection>>,
@@ -15,47 +15,55 @@ impl RoomService {
     RoomService { db_pool }
   }
 
-  pub fn create_room(&self, &room: Room) -> Result<Room, diesel::result::Error> {
-    let new_room = RoomEntity { id: room.get_id(), name: room.get_name() };
+  pub fn create_room(&self, room: &Room) -> Result<Room> {
+    use crate::services::schema::rooms::dsl::*;
+
+    let new_room = Room { id: room.id.clone(), name: room.name.clone() };
     let mut conn = self.db_pool.get()?;
 
-    let room: QueryResult<RoomEntity> = diesel::insert_into(rooms)
+    diesel::insert_into(rooms)
       .values(&new_room)
+      .execute(&mut conn)?;
+
+    Ok(room.clone())
+  }
+
+  pub fn get_room(&self, room_id: &str) -> Result<Room> {
+    use crate::services::schema::rooms::dsl::*;
+
+    let mut conn = self.db_pool.get()?;
+    let result: QueryResult<Room> = rooms
+      .filter(id.eq(room_id))
       .get_result(&mut conn)?;
 
-    Ok(Room::new(room.room_id, room.name))
+    Ok(result.unwrap())
   }
 
-  pub fn get_room(&self, id: &String) -> Result<RoomEntity, diesel::result::Error> {
-    let mut conn = self.db_pool.get()?;
-    let result = rooms.filter(room_id.eq(id)).first(&mut conn);
+  pub fn update_room(&self, room_id: &str, room_name: &str) -> Result<()> {
+    use crate::services::schema::rooms::dsl::*;
 
-    match result {
-      Ok(room) => Ok(room),
-      Err(diesel::result::Error::NotFound) => Err("Room not found".into()),
-      Err(err) => Err(err),
-    }
-  }
-
-  pub fn update_room(&self, id: String, name: String) -> Result<(), diesel::result::Error> {
     let mut conn = self.db_pool.get()?;
-    diesel::update(rooms.filter(room_id.eq(id)))
-      .set(name.eq(&name))
+    diesel::update(rooms.filter(id.eq(room_id)))
+      .set(name.eq(room_name))
       .execute(&mut conn)?;
 
     Ok(())
   }
 
-  pub fn delete_room(&self, id: String) -> Result<(), diesel::result::Error> {
+  pub fn delete_room(&self, room_id: &str) -> Result<()> {
+    use crate::services::schema::rooms::dsl::*;
+
     let mut conn = self.db_pool.get()?;
-    diesel::delete(rooms.filter(room_id.eq(id))).execute(&mut conn)?;
+    diesel::delete(rooms.filter(id.eq(room_id))).execute(&mut conn)?;
 
     Ok(())
   }
 
-  pub fn get_rooms(&self) -> Result<Vec<RoomEntity>, diesel::result::Error> {
+  pub fn get_rooms(&self) -> Result<Vec<Room>> {
+    use crate::services::schema::rooms::dsl::*;
+
     let mut conn = self.db_pool.get()?;
-    let result = rooms.load::<RoomEntity>(&mut conn)?;
+    let result = rooms.load::<Room>(&mut conn)?;
 
     Ok(result)
   }

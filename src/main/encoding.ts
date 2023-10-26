@@ -6,8 +6,8 @@ interface EncodedData {
   error?: any;
 }
 
-interface DecodedData {
-  data?: any;
+interface DecodedData<T> {
+  data?: T;
   error?: any;
 }
 
@@ -22,7 +22,7 @@ export function encodeData<T>(data: T): EncodedData {
   }
 }
 
-export function decodeData<T>(encodedData: string): DecodedData {
+export function decodeData<T>(encodedData: string): DecodedData<T> {
   try {
     const compressedData = atob(encodedData); // Convert Base64 to binary data
     const strData = pako.inflate(compressedData as any, { to: 'string' }); // Decompress the string

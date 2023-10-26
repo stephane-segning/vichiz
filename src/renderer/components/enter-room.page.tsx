@@ -39,7 +39,7 @@ export function EnterRoomPage() {
           <Form className="pb-2">
             <Field name="name">
               {({ field, meta }: any) => (
-                <div>
+                <div className="mb-4">
                   <input
                     type="text"
                     {...field}

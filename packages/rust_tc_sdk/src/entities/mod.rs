@@ -1,2 +1,2 @@
-pub(crate) mod room_entity;
-pub(crate) mod noise_entity;
+pub(crate) mod room;
+pub(crate) mod noise;
