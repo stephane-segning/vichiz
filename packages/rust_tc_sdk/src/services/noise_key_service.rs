@@ -52,7 +52,10 @@ impl NoiseKeyService {
             .filter(id.eq(room_id))
             .first(conn);
 
-        Self::from_entity(result.unwrap())
+        match result {
+            Ok(entity) => Self::from_entity(entity),
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub fn delete_key(&self, room_id: &str) -> Result<()> {
@@ -68,11 +71,11 @@ mod tests {
     use super::*;
     use diesel::r2d2::Pool;
     use diesel::r2d2::ConnectionManager;
+    use crate::services::connection::establish_connection;
 
     fn setup_test_db() -> Pool<ConnectionManager<SqliteConnection>> {
         let database_url = ":memory:"; // SQLite in-memory database
-        let manager = ConnectionManager::<SqliteConnection>::new(database_url);
-        Pool::builder().build(manager).unwrap()
+        establish_connection(Some(database_url.to_string()))
     }
 
     #[test]
@@ -89,8 +92,7 @@ mod tests {
         let room_id = "test_room_1";
 
         let create_result = service.create_key(room_id);
-        create_result.unwrap_or_else(|error| panic!("Failed to create key for room {}", error));
-        // assert!(create_result.is_ok());
+        assert!(create_result.is_ok());
 
         let get_key_result = service.get_key(room_id);
         assert!(get_key_result.is_ok());

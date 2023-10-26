@@ -36,7 +36,7 @@ mod tests {
         let id = "sample-id".to_string();
         let room = Room::from((id.clone(), "sample-name".to_string()));
 
-        assert_eq!(room.name().clone(), id);
+        assert_eq!(room.id().clone(), id);
     }
 
     #[test]

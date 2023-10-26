@@ -64,20 +64,13 @@ mod tests {
     use diesel::r2d2::{ConnectionManager, Pool};
 
     use crate::entities::room::Room;
+    use crate::services::connection::establish_connection;
 
     use super::*;
 
     fn setup_database() -> Pool<ConnectionManager<SqliteConnection>> {
-        let manager = ConnectionManager::<SqliteConnection>::new("sqlite::memory:");
-        let pool = Pool::new(manager).expect("Failed to create pool.");
-        let connection = pool.get().expect("Failed to get connection from pool.");
-
-        // Create the `rooms` table in the in-memory database.
-        // This assumes you have a migration script or similar to set up the table.
-        // You might need to adjust this if your setup is different.
-        // diesel::migrations::run_pending_migrations(&connection).unwrap();
-
-        pool
+        let database_url = ":memory:"; // SQLite in-memory database
+        establish_connection(Some(database_url.to_string()))
     }
 
     #[test]

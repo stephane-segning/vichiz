@@ -76,7 +76,7 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
         swarm.listen_on(url.parse()?)?;
     }
 
-    for addr in &config.room_multiaddress {
+    for addr in &config.room_multi_address {
         let remote: Multiaddr = addr.parse()?;
         swarm.dial(remote)?;
         println!("Dialed {addr}")

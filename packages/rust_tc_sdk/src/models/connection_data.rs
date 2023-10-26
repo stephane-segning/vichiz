@@ -7,7 +7,7 @@ pub struct ConnectionData {
   pub room_id: String,
 
   #[getset(get_copy = "pub", set = "pub", get_mut = "pub", get = "pub")]
-  pub room_multiaddress: Vec<String>,
+  pub room_multi_address: Vec<String>,
 
   #[getset(get_copy = "pub", set = "pub", get_mut = "pub", get = "pub")]
   pub room_listen_on: Vec<String>,

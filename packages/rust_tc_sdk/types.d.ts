@@ -1,5 +1,5 @@
 declare module 'rust-tc-sdk' {
-  export function startSdk(dbUrl: string): void;
+  export function startSdk(options: RustSDKOptions): void;
 
   export function stopSdk(cleanUp: boolean): void;
 
@@ -7,10 +7,14 @@ declare module 'rust-tc-sdk' {
 
   export function launchRoom(data: ConnectionData): void;
 
+  export interface RustSDKOptions {
+    db_url?: string;
+  }
+
   export interface ConnectionData {
-    roomId: string;
-    roomMultiAddress?: string[];
-    roomListen_on?: string[];
+    room_id: string;
+    room_multi_address?: string[];
+    room_listen_on?: string[];
   }
 
   export interface RoomOption {

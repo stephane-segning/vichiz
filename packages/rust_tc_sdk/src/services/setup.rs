@@ -1,12 +1,11 @@
 use std::sync::RwLock;
 
 use neon::prelude::*;
-use state::*;
 use neon_serde3::*;
+use state::*;
 
 use crate::models::connection_data::ConnectionData;
 use crate::models::room_option::RoomOption;
-
 use crate::models::rust_sdk_options::RustSDKOptions;
 use crate::services::sdk::RustSDK;
 
@@ -24,18 +23,28 @@ pub(crate) fn stop_sdk(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-pub(crate)fn start_sdk(mut cx: FunctionContext) -> JsResult<JsUndefined> {
-    let db_url = cx.argument::<JsString>(0)?.value(&mut cx);
+pub(crate) fn start_sdk(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    match CONFIG.get().write() {
+        Ok(_) => {
+            panic!("SDK already started")
+        }
+        Err(..) => {
+            let arg0 = cx.argument::<JsValue>(0)?;
 
-    let options = RustSDKOptions::new(db_url);
-    let sdk = RustSDK::new(options);
+            let options: RustSDKOptions = from_value(&mut cx, arg0)
+                .or_else(|e| cx.throw_error(e.to_string()))
+                .unwrap();
 
-    CONFIG.set(RwLock::new(sdk));
+            let sdk = RustSDK::new(options);
+
+            CONFIG.set(RwLock::new(sdk));
+        }
+    }
 
     Ok(cx.undefined())
 }
 
-pub(crate)fn create_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+pub(crate) fn create_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let arg0 = cx.argument::<JsValue>(0)?;
 
     let room_option: RoomOption = from_value(&mut cx, arg0)
@@ -52,7 +61,7 @@ pub(crate)fn create_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     Ok(cx.undefined())
 }
 
-pub(crate)fn launch_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+pub(crate) fn launch_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     let arg0 = cx.argument::<JsValue>(0)?;
 
     let data: ConnectionData = from_value(&mut cx, arg0)
