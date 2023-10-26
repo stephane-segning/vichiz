@@ -1,6 +1,8 @@
+use libp2p::Swarm;
 use uuid::Uuid;
 
 use crate::entities::room::Room;
+use crate::models::behaviour::AppBehaviour;
 use crate::models::connection_data::ConnectionData;
 use crate::models::error::*;
 use crate::models::room_option::RoomOption;
@@ -56,8 +58,8 @@ impl RustSDK {
             Err(_) => panic!("Key not found")
         };
 
-        let swarm = create_private_network(room, &data, keypair).await?;
-        let _ = run_swarm(swarm).await;
+        let swarm: Swarm<AppBehaviour> = create_private_network(room, &data, keypair)?;
+        let _ = run_swarm(swarm);
 
         Ok(())
     }

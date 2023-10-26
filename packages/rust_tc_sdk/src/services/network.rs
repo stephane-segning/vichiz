@@ -20,6 +20,7 @@ use crate::models::connection_data::ConnectionData;
 use crate::models::error::*;
 
 #[inline]
+#[tokio::main]
 pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
@@ -85,6 +86,7 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
 }
 
 #[inline]
+#[tokio::main]
 pub async fn run_swarm(mut swarm: Swarm<AppBehaviour>) -> Result<()> {
     loop {
         match swarm.select_next_some().await {

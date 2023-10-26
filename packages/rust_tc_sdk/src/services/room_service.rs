@@ -59,3 +59,50 @@ impl RoomService {
         Ok(result)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use diesel::r2d2::{ConnectionManager, Pool};
+    use crate::entities::room::Room;
+    use crate::services::schema::rooms;
+
+    fn setup_database() -> Pool<ConnectionManager<SqliteConnection>> {
+        let manager = ConnectionManager::<SqliteConnection>::new("sqlite::memory:");
+        let pool = Pool::new(manager).expect("Failed to create pool.");
+        let connection = pool.get().expect("Failed to get connection from pool.");
+
+        // Create the `rooms` table in the in-memory database.
+        // This assumes you have a migration script or similar to set up the table.
+        // You might need to adjust this if your setup is different.
+        // diesel::migrations::run_pending_migrations(&connection).unwrap();
+
+        pool
+    }
+
+    #[test]
+    fn test_create_room() {
+        let pool = setup_database();
+        let service = RoomService::new(pool);
+        let room = Room::new("123", "Test Room");
+
+        let result = service.create_room(&room);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_get_room() {
+        let pool = setup_database();
+        let service = RoomService::new(pool);
+        let room = Room::new("123", "Test Room");
+
+        service.create_room(&room).unwrap();
+        let fetched_room = service.get_room("123");
+        assert_eq!(fetched_room.unwrap().get_name(), "Test Room");
+    }
+
+    // Similarly, you can add tests for update_room, delete_room, and get_rooms.
+
+    // Note: The tests are very basic and do not cover all edge cases.
+    // It's recommended to add more tests and assertions to cover various scenarios.
+}

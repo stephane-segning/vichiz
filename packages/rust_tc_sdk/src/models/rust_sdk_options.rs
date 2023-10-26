@@ -9,3 +9,18 @@ impl RustSDKOptions {
     }
   }
 }
+
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_rust_sdk_options_new() {
+    let db_url = "sqlite://test.db";
+
+    let options = RustSDKOptions::new(db_url);
+
+    assert_eq!(options.db_url, db_url);
+  }
+}
