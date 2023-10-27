@@ -9,7 +9,7 @@ export function RoomPage() {
   const navigate = useNavigate();
   const { roomId } = useParams<{ roomId: string }>();
   const room = useSelector(roomSelector(roomId!));
-  const { activeNodes } = useDPM(room);
+  const { sendMessage } = useDPM(room);
   const { localStream } = useVCM(room);
 
   const exportRoomConfig = () => {};

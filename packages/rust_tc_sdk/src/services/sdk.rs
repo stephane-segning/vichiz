@@ -78,8 +78,8 @@ impl RustSDK {
         log::info!("Creating room");
         // Create noise keys for the room.
         let room_id = match options.id {
-            None => Uuid::new_v4().to_string(),
-            Some(x) => x
+            Some(x) if x.len() > 0 => x,
+            _ => Uuid::new_v4().to_string()
         };
         self.noise_key_service.create_key(&room_id)?;
 

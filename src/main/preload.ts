@@ -5,21 +5,25 @@ import { Room, RoomOption } from 'rust-tc-sdk';
 
 const electronHandler = {
   encode: {
-    encode(data: any, func: (...args: unknown[]) => void) {
-      ipcRenderer.once('data-encode', (_event, ...args) => func(...args));
-      ipcRenderer.send('data-encode', data);
+    encode(data: any) {
+      return ipcRenderer.invoke('data-encode', data);
     },
-    decode(text: string, func: (...args: unknown[]) => void) {
-      ipcRenderer.once('data-decode', (_event, ...args) => func(...args));
-      ipcRenderer.send('data-decode', text);
+    decode(text: string) {
+      return ipcRenderer.invoke('data-decode', text);
     },
   },
   sdk: {
     async create(room: RoomOption): Promise<Room> {
-      return ipcRenderer.sendSync('net-create', room);
+      return ipcRenderer.invoke('net-create', room);
+    },
+    async remove(roomId: string): Promise<void> {
+      return ipcRenderer.invoke('net-remove', roomId);
     },
     async getRooms(): Promise<Room[]> {
-      return ipcRenderer.sendSync('net-get-all');
+      return ipcRenderer.invoke('net-get-all');
+    },
+    async getRoom(id: string): Promise<Room> {
+      return ipcRenderer.invoke('net-get-one', id);
     },
     onNodeAvailable(roomId: string, callback: (...args: unknown[]) => void) {
       ipcRenderer.on(`net-node-available-${roomId}`, (_event, ...args) =>
@@ -36,16 +40,11 @@ const electronHandler = {
         callback(...args),
       );
     },
-    async destroy(roomId: string) {
-      return ipcRenderer.sendSync('net-destroy');
+    async destroy() {
+      return ipcRenderer.invoke('net-destroy');
     },
     async broadcast(roomId: string, type: string, data: any) {
-      return ipcRenderer.sendSync(
-        `net-broadcast-${roomId}`,
-        roomId,
-        type,
-        data,
-      );
+      return ipcRenderer.invoke('net-broadcast', roomId, type, data);
     },
   },
 };
@@ -58,18 +57,14 @@ declare global {
   interface Window {
     electron: {
       encode: {
-        encode: <T>(
-          data: T,
-          callback: (result: string, error?: any) => void,
-        ) => void;
-        decode: <T>(
-          text: string,
-          callback: (result: T, error?: any) => void,
-        ) => void;
+        encode: <T>(data: T) => Promise<{ result: string; error?: any }>;
+        decode: <T>(text: string) => Promise<{ result: T; error?: any }>;
       };
       sdk: {
-        create(room: RoomOption): Promise<void>;
+        create(room: RoomOption): Promise<Room>;
+        remove(roomId: string): Promise<void>;
         getRooms(): Promise<Room[]>;
+        getRoom(id: string): Promise<Room>;
         onNodeAvailable(roomId: string, callback: (node: any) => void): void;
         onNodeUnavailable(roomId: string, callback: (node: any) => void): void;
         onMessage(roomId: string, callback: (result: any) => void): void;

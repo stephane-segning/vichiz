@@ -2,36 +2,49 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Field, Form, Formik } from 'formik';
-import { Room } from 'rust-tc-sdk';
-import { roomsSelector, setRoom } from '../redux/room';
+import { Room, RoomOption } from 'rust-tc-sdk';
+import React, { useCallback, useEffect, useMemo } from 'react';
+import { unwrapResult } from '@reduxjs/toolkit';
+import { Crosshair, X } from 'react-feather';
+import { createRoom, getRooms, removeRoom, roomsSelector } from '../redux/room';
 import icon from '../../../assets/icon.svg';
 
 const roomSchema = Yup.object().shape({
-  id: Yup.string()
-    .required('ID is required')
-    .default(() => Math.random().toString(36)),
   name: Yup.string().required('Name is required'),
-  secretToken: Yup.string()
-    .required('Secret is required')
-    .default(() => Math.random().toString(36)),
 });
 
 export function EnterRoomPage() {
   const navigate = useNavigate();
-  const rooms = useSelector(roomsSelector);
+  const roomsMap = useSelector(roomsSelector);
+  const rooms = useMemo(() => Object.values(roomsMap), [roomsMap]);
   const dispatch = useDispatch();
 
-  const onSubmit = (value: Partial<Room>) => {
-    console.log({ value });
-    dispatch(setRoom(value as Room));
-    navigate(`/room/${value.id}`);
-  };
+  const onSubmit = useCallback(
+    async (option: RoomOption) => {
+      const resultAction = await dispatch(createRoom(option) as any);
+      const room: Room = unwrapResult(resultAction);
+      navigate(`/room/${room.id}`);
+    },
+    [dispatch, navigate],
+  );
+
+  const remove = useCallback(
+    (e: React.MouseEvent<HTMLButtonElement, MouseEvent>, id: string) => {
+      e.stopPropagation();
+      dispatch(removeRoom(id) as any);
+    },
+    [dispatch],
+  );
+
+  useEffect(() => {
+    dispatch(getRooms() as any);
+  }, [dispatch]);
 
   return (
     <div className="w-full max-w-md px-4 mx-auto py-16">
       <img className="pb-4 mx-auto" width="144" alt="icon" src={icon} />
       <h1 className="text-4xl pb-4 font-bold text-center">Enter Room</h1>
-      <Formik<Partial<Room>>
+      <Formik<RoomOption>
         validationSchema={roomSchema}
         initialValues={{ name: '' }}
         onSubmit={onSubmit}>
@@ -62,16 +75,21 @@ export function EnterRoomPage() {
           </Form>
         )}
       </Formik>
-      <div className="divider" />
+      {rooms.length > 0 && <div className="divider" />}
       <div>
         {rooms.map((room) => (
-          <button
-            type="button"
+          <div
             onClick={() => navigate(`/room/${room.id}`)}
             key={room.id}
-            className="kbd kbd-md mr-2 mb-2">
+            className="kbd kbd-md mr-2 mb-2 cursor-pointer">
+            <button
+              type="button"
+              onClick={(e) => remove(e, room.id)}
+              className="btn btn-sm btn-circle">
+              <X className="h-6 w-6" />
+            </button>
             {room.name}
-          </button>
+          </div>
         ))}
       </div>
     </div>

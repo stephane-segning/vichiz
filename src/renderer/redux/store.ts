@@ -1,11 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
 
-import roomReducer from './room';
+import roomReducer, { ROOM_TOKEN } from './room';
 import connectionReducer from './connection';
 
 const rootReducer = combineReducers({
-  room: roomReducer,
+  [ROOM_TOKEN]: roomReducer,
   connection: connectionReducer,
 });
 

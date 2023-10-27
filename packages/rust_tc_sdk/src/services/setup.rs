@@ -106,6 +106,24 @@ pub(crate) async fn get_room(mut cx: FunctionContext) -> JsResult<JsValue> {
 }
 
 #[tokio::main]
+pub(crate) async fn remove_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
+    log::info!("Remove room");
+    let arg0 = cx.argument::<JsValue>(0)?;
+
+    let room_id: RoomId = from_value(&mut cx, arg0)
+        .or_else(|e| cx.throw_error(e.to_string()))
+        .unwrap();
+
+    let sdk = CONFIG.get().lock().await;
+    sdk.remove_room(room_id.id.as_str()).unwrap_or_else(|e| {
+        panic!("Failed to remove room {}", e);
+    });
+
+    log::info!("Room removed");
+    Ok(cx.undefined())
+}
+
+#[tokio::main]
 pub(crate) async fn launch_room(mut cx: FunctionContext) -> JsResult<JsUndefined> {
     log::info!("Launching room");
     let arg0 = cx.argument::<JsValue>(0)?;

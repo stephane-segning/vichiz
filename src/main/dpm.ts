@@ -1,4 +1,14 @@
-import { createRoom, RoomOption, startSdk, getRooms } from 'rust-tc-sdk';
+import {
+  createRoom,
+  getRoom,
+  getRooms,
+  RoomOption,
+  startSdk,
+  stopSdk,
+  quitRoom,
+  launchRoom,
+  removeRoom,
+} from 'rust-tc-sdk';
 import { app, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -16,15 +26,33 @@ export function initDpm() {
   });
 }
 
-ipcMain.on('net-get-all', async (event) => {
+ipcMain.handle('net-get-all', async (event) => {
   const rooms = getRooms();
-  event.reply('net-get-all', rooms);
+  return rooms;
 });
 
-ipcMain.on('net-create', async (event, room: RoomOption) => {
+ipcMain.handle('net-get-one', async (event, id: string) => {
+  const room = getRoom({ id });
+  return room;
+});
+
+ipcMain.handle('net-create', async (event, room: RoomOption) => {
   const created = createRoom(room);
-  console.log({ created, room });
-  event.reply('net-create', created);
+  return created;
 });
 
-ipcMain.on('net-destroy', async (event, roomId) => {});
+ipcMain.handle('net-destroy', async (event) => {
+  stopSdk(false);
+});
+
+ipcMain.handle('net-start-room', async (event, roomId: string) => {
+  launchRoom({ room_id: roomId });
+});
+
+ipcMain.handle('net-quit-room', async (event, roomId: string) => {
+  quitRoom({ id: roomId });
+});
+
+ipcMain.handle('net-remove', async (event, roomId: string) => {
+  removeRoom({ id: roomId });
+});

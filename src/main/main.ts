@@ -17,6 +17,8 @@ import { resolveHtmlPath } from './util';
 import './encoding';
 import { initDpm } from './dpm';
 
+initDpm();
+
 class AppUpdater {
   constructor() {
     log.transports.file.level = 'info';
@@ -123,9 +125,8 @@ app.on('window-all-closed', () => {
 app
   .whenReady()
   .then(() => {
-    initDpm();
-
     createWindow();
+
     app.on('activate', () => {
       // On macOS it's common to re-create a window in the app when the
       // dock icon is clicked and there are no other windows open.

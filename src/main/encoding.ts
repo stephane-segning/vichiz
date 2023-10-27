@@ -33,12 +33,12 @@ export function decodeData<T>(encodedData: string): DecodedData<T> {
   }
 }
 
-ipcMain.on('data-encode', async (event, text: any) => {
+ipcMain.handle('data-encode', async (event, text: any) => {
   const { error, data } = encodeData(text);
-  event.reply('data-encode', data, error);
+  return { data, error };
 });
 
-ipcMain.on('data-decode', async (event, text: string) => {
+ipcMain.handle('data-decode', async (event, text: string) => {
   const { error, data } = decodeData(text);
-  event.reply('data-decode', data, error);
+  return { data, error };
 });

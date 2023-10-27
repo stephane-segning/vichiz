@@ -5,6 +5,8 @@ declare module 'rust-tc-sdk' {
 
   export function createRoom(option: RoomOption): Room;
 
+  export function removeRoom(data: RoomId): void;
+
   export function launchRoom(data: ConnectionData): void;
 
   export function getRoom(data: RoomId): Room;
