@@ -153,7 +153,7 @@ devDependencies:
     version: 10.4.16(postcss@8.4.31)
   browserslist-config-erb:
     specifier: ^0.0.3
-    version: 0.0.3(electron@26.4.1)
+    version: 0.0.3(electron@27.0.2)
   chalk:
     specifier: ^4.1.2
     version: 4.1.2
@@ -179,8 +179,8 @@ devDependencies:
     specifier: ^1.5.1
     version: 1.5.1
   electron:
-    specifier: ^26.4.1
-    version: 26.4.1
+    specifier: ^27.0.2
+    version: 27.0.2
   electron-builder:
     specifier: ^24.6.4
     version: 24.6.4
@@ -250,6 +250,9 @@ devDependencies:
   mini-css-extract-plugin:
     specifier: ^2.7.6
     version: 2.7.6(webpack@5.89.0)
+  node-loader:
+    specifier: ^2.0.0
+    version: 2.0.0(webpack@5.89.0)
   postcss:
     specifier: ^8.4.31
     version: 8.4.31
@@ -4282,12 +4285,12 @@ packages:
       fill-range: 7.0.1
     dev: true
 
-  /browserslist-config-erb@0.0.3(electron@26.4.1):
+  /browserslist-config-erb@0.0.3(electron@27.0.2):
     resolution: {integrity: sha512-y47DryCY92lxkKyRVMlaZvXAolIY7U33q9e4CS0MdWeJkoAht7OzsrkfdZFCBOP3H5q1EVUxS0L7VVsKM6gZCQ==}
     peerDependencies:
       electron: '>=12.0.0'
     dependencies:
-      electron: 26.4.1
+      electron: 27.0.2
     dev: true
 
   /browserslist@4.22.1:
@@ -5837,8 +5840,8 @@ packages:
       - supports-color
     dev: false
 
-  /electron@26.4.1:
-    resolution: {integrity: sha512-G6Huzx2xP+Atknj68EsD/TzjpFSsl7nbfBcDqKf1p9DaPMIB5HRqpts3s/sd5daWinNrWInREEw2A4EavP59qw==}
+  /electron@27.0.2:
+    resolution: {integrity: sha512-4fbcHQ40ZDlqhr5Pamm+M5BF7ry2lGqjFTWTJ/mrBwuiPWu6xhV/RWgUhKBaLqKNfAaNl3eMxV3Jc82gv6JauQ==}
     engines: {node: '>= 12.20.55'}
     hasBin: true
     requiresBuild: true
@@ -9752,6 +9755,16 @@ packages:
 
   /node-int64@0.4.0:
     resolution: {integrity: sha512-O5lz91xSOeoXP6DulyHfllpq+Eg00MWitZIbtPfoSEvqIHdl5gfcY6hYzDWnj0qD5tz52PI08u9qUvSVeUBeHw==}
+    dev: true
+
+  /node-loader@2.0.0(webpack@5.89.0):
+    resolution: {integrity: sha512-I5VN34NO4/5UYJaUBtkrODPWxbobrE4hgDqPrjB25yPkonFhCmZ146vTH+Zg417E9Iwoh1l/MbRs1apc5J295Q==}
+    engines: {node: '>= 10.13.0'}
+    peerDependencies:
+      webpack: ^5.0.0
+    dependencies:
+      loader-utils: 2.0.4
+      webpack: 5.89.0(webpack-cli@5.1.4)
     dev: true
 
   /node-releases@2.0.13:

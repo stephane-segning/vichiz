@@ -1,5 +1,5 @@
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Room, RoomOption } from 'rust-tc-sdk';
+import type { Room, RoomOption } from 'rust-tc-sdk';
 
 type RoomState = Record<string, Room>;
 
@@ -35,6 +35,20 @@ export const removeRoom = createAsyncThunk(
   `${ROOM_TOKEN}/removeRoom`,
   async (roomId: string, thunkAPI) => {
     await window.electron.sdk.remove(roomId);
+  },
+);
+
+export const openRoom = createAsyncThunk(
+  `${ROOM_TOKEN}/openRoom`,
+  async (roomId: string, { dispatch }) => {
+    await window.electron.sdk.openRoom(roomId);
+  },
+);
+
+export const closeRoom = createAsyncThunk(
+  `${ROOM_TOKEN}/closeRoom`,
+  async (roomId: string, { dispatch }) => {
+    await window.electron.sdk.closeRoom(roomId);
   },
 );
 
@@ -81,13 +95,23 @@ const roomSlice = createSlice({
     builder.addCase(broadcast.fulfilled, (state, action) => {
       // Do nothing
     });
+
+    builder.addCase(openRoom.fulfilled, (state, action) => {
+      // Do nothing
+    });
+
+    builder.addCase(closeRoom.fulfilled, (state, action) => {
+      // Do nothing
+    });
   },
 });
 
 export const roomsSelector = (state: { room: RoomState }) => state.room;
 
-export const roomSelector = (roomId: string) => (state: { room: RoomState }) =>
-  state.room[roomId];
+export const roomSelector =
+  (roomId: string) =>
+  (state: { room: RoomState }): Room | undefined =>
+    state.room[roomId];
 
 export const { setRoom } = roomSlice.actions;
 export default roomSlice.reducer;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import SimplePeer from 'simple-peer';
-import { Room } from 'rust-tc-sdk';
+import type { Room } from 'rust-tc-sdk';
 
 interface RemoteStreams {
   [id: string]: MediaStream;
@@ -10,7 +10,7 @@ interface RegisterPeer {
   [nodeId: string]: SimplePeer.Instance;
 }
 
-export const useVCM = (room: Room) => {
+export const useVCM = (room?: Room) => {
   const [peers, setPeers] = useState<RegisterPeer>({});
   const [localStream, setLocalStream] = useState<MediaStream | undefined>();
   const [remoteStreams, setRemoteStreams] = useState<RemoteStreams>({});
@@ -50,22 +50,24 @@ export const useVCM = (room: Room) => {
   // Change camera based on the provided deviceId
   const changeCamera = useCallback(
     (deviceId: string) => {
-      if (!localStream) return;
-
       navigator.mediaDevices
         .getUserMedia({
           video: { deviceId: { exact: deviceId } },
           audio: true,
         })
         .then((newStream) => {
+          if (localStream) {
+            const oldTrack = localStream.getVideoTracks()[0];
+            if (oldTrack) oldTrack.stop();
+          }
           // Stop old track
-          const oldTrack = localStream.getVideoTracks()[0];
-          if (oldTrack) oldTrack.stop();
 
           // Replace with the new track
           const newTrack = newStream.getVideoTracks()[0];
           if (newTrack) {
-            localStream.addTrack(newTrack);
+            if (localStream) {
+              localStream.addTrack(newTrack);
+            }
             setLocalStream(localStream);
           }
           return null;
@@ -97,8 +99,6 @@ export const useVCM = (room: Room) => {
 
   const changeAudioDevice = useCallback(
     (deviceId: string) => {
-      if (!localStream) return;
-
       navigator.mediaDevices
         .getUserMedia({
           video: true,
@@ -106,13 +106,17 @@ export const useVCM = (room: Room) => {
         })
         .then((newStream) => {
           // Stop old track
-          const oldTrack = localStream.getAudioTracks()[0];
-          if (oldTrack) oldTrack.stop();
+          if (localStream) {
+            const oldTrack = localStream.getAudioTracks()[0];
+            if (oldTrack) oldTrack.stop();
+          }
 
           // Replace with the new track
           const newTrack = newStream.getAudioTracks()[0];
           if (newTrack) {
-            localStream.addTrack(newTrack);
+            if (localStream) {
+              localStream.addTrack(newTrack);
+            }
             setLocalStream(localStream);
           }
           return null;
@@ -121,45 +125,6 @@ export const useVCM = (room: Room) => {
     },
     [localStream],
   );
-
-  useEffect(() => {
-    // Handle the incoming stream from a peer.
-    window.electron.sdk.onNodeAvailable(room.id, (node) => {
-      const simplePeer = new SimplePeer({
-        stream: localStream,
-      });
-
-      simplePeer.on('stream', (stream: MediaStream) => {
-        handleStream(node.id, stream);
-      });
-
-      simplePeer.on('signal', async (data) => {
-        await node.send('WEBRTC_SIGNAL', data);
-      });
-
-      node.onMessage((msg: any) => {
-        if (msg.type === 'WEBRTC_SIGNAL') {
-          simplePeer.signal(msg.data);
-        }
-      });
-
-      setPeers((prev) => ({ ...prev, [node.id]: simplePeer }));
-    });
-
-    window.electron.sdk.onNodeUnavailable(room.id, async (node) => {
-      peers[node.id].destroy();
-    });
-
-    return () => {
-      // Cleanup connections if the hook is unmounted
-      for (const stream of Object.values(remoteStreams)) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
-      if (localStream) {
-        localStream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [localStream, peers, remoteStreams, room.id]);
 
   return {
     changeCamera,

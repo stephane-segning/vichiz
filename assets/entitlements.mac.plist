@@ -6,5 +6,21 @@
     <true/>
     <key>com.apple.security.cs.allow-jit</key>
     <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>We need access to your camera for video calling.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>We need access to your microphone for voice communication.</string>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.network.server</key>
+    <true/>
+    <key>com.apple.developer.networking.multicast</key>
+    <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.device.camera</key>
+    <true/>
+    <key>com.apple.security.device.microphone</key>
+    <true/>
   </dict>
 </plist>

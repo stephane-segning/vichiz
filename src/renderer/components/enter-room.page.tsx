@@ -2,11 +2,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Field, Form, Formik } from 'formik';
-import { Room, RoomOption } from 'rust-tc-sdk';
-import React, { useCallback, useEffect, useMemo } from 'react';
+import type { Room, RoomOption } from 'rust-tc-sdk';
+import React, { useCallback, useMemo } from 'react';
 import { unwrapResult } from '@reduxjs/toolkit';
-import { Crosshair, X } from 'react-feather';
-import { createRoom, getRooms, removeRoom, roomsSelector } from '../redux/room';
+import { X } from 'react-feather';
+import { createRoom, removeRoom, roomsSelector } from '../redux/room';
 import icon from '../../../assets/icon.svg';
 
 const roomSchema = Yup.object().shape({
@@ -35,10 +35,6 @@ export function EnterRoomPage() {
     },
     [dispatch],
   );
-
-  useEffect(() => {
-    dispatch(getRooms() as any);
-  }, [dispatch]);
 
   return (
     <div className="w-full max-w-md px-4 mx-auto py-16">
