@@ -3,9 +3,23 @@ declare module 'rust-tc-sdk' {
 
   export function stopSdk(cleanUp: boolean): void;
 
-  export function createRoom(option: RoomOption): void;
+  export function createRoom(option: RoomOption): Room;
 
   export function launchRoom(data: ConnectionData): void;
+
+  export function getRoom(data: RoomId): Room;
+
+  export function quitRoom(data: RoomId): void;
+
+  export function getRooms(): Room[];
+
+  export function registerListener(callback: Callback): void;
+
+  export type Callback = (type: string, data: CallbackPayload) => void;
+
+  export interface CallbackPayload {
+    data: string;
+  }
 
   export interface RustSDKOptions {
     db_url?: string;
@@ -27,8 +41,7 @@ declare module 'rust-tc-sdk' {
     name: string;
   }
 
-  export interface NoiseModel {
+  export interface RoomId {
     id: string;
-    public: string;
   }
 }

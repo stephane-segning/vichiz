@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import SimplePeer from 'simple-peer';
-import { Room } from '../models/room';
+import { Room } from 'rust-tc-sdk';
 
 interface RemoteStreams {
   [id: string]: MediaStream;
@@ -124,7 +124,7 @@ export const useVCM = (room: Room) => {
 
   useEffect(() => {
     // Handle the incoming stream from a peer.
-    window.electron.ataraxia.onNodeAvailable(room.id, (node) => {
+    window.electron.sdk.onNodeAvailable(room.id, (node) => {
       const simplePeer = new SimplePeer({
         stream: localStream,
       });
@@ -146,7 +146,7 @@ export const useVCM = (room: Room) => {
       setPeers((prev) => ({ ...prev, [node.id]: simplePeer }));
     });
 
-    window.electron.ataraxia.onNodeUnavailable(room.id, async (node) => {
+    window.electron.sdk.onNodeUnavailable(room.id, async (node) => {
       peers[node.id].destroy();
     });
 

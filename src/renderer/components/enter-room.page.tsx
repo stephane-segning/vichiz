@@ -2,9 +2,9 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import * as Yup from 'yup';
 import { Field, Form, Formik } from 'formik';
+import { Room } from 'rust-tc-sdk';
 import { roomsSelector, setRoom } from '../redux/room';
 import icon from '../../../assets/icon.svg';
-import { Room } from '../models/room';
 
 const roomSchema = Yup.object().shape({
   id: Yup.string()

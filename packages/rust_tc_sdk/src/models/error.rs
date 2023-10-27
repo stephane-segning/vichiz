@@ -15,6 +15,7 @@ error_chain! {
         SubscriptionError(libp2p::gossipsub::SubscriptionError);
         MultiAddrError(libp2p::multiaddr::Error);
         TransportError(libp2p::core::transport::TransportError<std::io::Error>);
+        TokioControlMessageError(tokio::sync::mpsc::error::SendError<crate::services::swarm_controller::ControlMessage>);
     }
 
     errors {

@@ -1,7 +1,7 @@
 // Disable no-unused-vars, broken for spread args
 /* eslint no-unused-vars: off */
 import { contextBridge, ipcRenderer } from 'electron';
-import { Room } from '../renderer/models/room';
+import { Room, RoomOption } from 'rust-tc-sdk';
 
 const electronHandler = {
   encode: {
@@ -14,9 +14,12 @@ const electronHandler = {
       ipcRenderer.send('data-decode', text);
     },
   },
-  ataraxia: {
-    async create(room: Room) {
+  sdk: {
+    async create(room: RoomOption): Promise<Room> {
       return ipcRenderer.sendSync('net-create', room);
+    },
+    async getRooms(): Promise<Room[]> {
+      return ipcRenderer.sendSync('net-get-all');
     },
     onNodeAvailable(roomId: string, callback: (...args: unknown[]) => void) {
       ipcRenderer.on(`net-node-available-${roomId}`, (_event, ...args) =>
@@ -64,19 +67,14 @@ declare global {
           callback: (result: T, error?: any) => void,
         ) => void;
       };
-      ataraxia: {
-        create: (room: Room) => Promise<void>;
-        onNodeAvailable: (
-          roomId: string,
-          callback: (node: any) => void,
-        ) => void;
-        onNodeUnavailable: (
-          roomId: string,
-          callback: (node: any) => void,
-        ) => void;
-        onMessage: (roomId: string, callback: (result: any) => void) => void;
-        destroy: (roomId: string) => Promise<void>;
-        broadcast: (roomId: string, type: string, data: any) => Promise<void>;
+      sdk: {
+        create(room: RoomOption): Promise<void>;
+        getRooms(): Promise<Room[]>;
+        onNodeAvailable(roomId: string, callback: (node: any) => void): void;
+        onNodeUnavailable(roomId: string, callback: (node: any) => void): void;
+        onMessage(roomId: string, callback: (result: any) => void): void;
+        destroy(roomId: string): Promise<void>;
+        broadcast(roomId: string, type: string, data: any): Promise<void>;
       };
     };
   }

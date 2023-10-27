@@ -10,5 +10,17 @@
   "bracketSpacing": true,
   "jsxBracketSameLine": true,
   "endOfLine": "auto",
-  "plugins": ["prettier-plugin-ejs"]
+  "plugins": [
+    "prettier-plugin-ejs",
+    "prettier-plugin-rust"
+  ],
+  "overrides": [
+    {
+      "files": ["*.rs"],
+      "options": {
+        "printWidth": 120,
+        "jsxBracketSameLine": false
+      }
+    }
+  ]
 }

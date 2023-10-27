@@ -1,8 +1,15 @@
-use getset::MutGetters;
-use libp2p::{gossipsub, mdns, ping, upnp};
-use libp2p::swarm::NetworkBehaviour;
+use derive_more::From;
+use getset::*;
+use libp2p::{
+    gossipsub,
+    identify,
+    mdns,
+    ping,
+    upnp,
+};
+use libp2p::swarm::*;
 
-#[derive(NetworkBehaviour, MutGetters)]
+#[derive(From, NetworkBehaviour, Getters, MutGetters, Setters)]
 pub struct AppBehaviour {
     #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
     gossip_sub: gossipsub::Behaviour,
@@ -15,10 +22,7 @@ pub struct AppBehaviour {
 
     #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
     ping: ping::Behaviour,
-}
 
-impl AppBehaviour {
-    pub fn new(gossip_sub: gossipsub::Behaviour, mdns: mdns::tokio::Behaviour, upnp: upnp::tokio::Behaviour, ping: ping::Behaviour) -> Self {
-        Self { gossip_sub, mdns, upnp, ping }
-    }
+    #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
+    identify: identify::Behaviour,
 }

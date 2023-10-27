@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { Room } from '../models/room';
+import { Room } from 'rust-tc-sdk';
 
 type RoomState = Record<string, Room>;
 

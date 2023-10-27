@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Room } from 'rust-tc-sdk';
 import { setRoom } from '../redux/room';
 import {
   currentHostSelector,
@@ -8,7 +9,6 @@ import {
   setNextHost,
   setRoomId,
 } from '../redux/connection';
-import { Room } from '../models/room';
 
 interface PeerScores {
   [peerId: string]: number;
@@ -68,7 +68,7 @@ export const useDPM = (room: Room) => {
   const sendMessage = useCallback(
     async (message: string, data: any) => {
       // Send a message to peers
-      await window.electron.ataraxia.broadcast(room.id, message, data);
+      await window.electron.sdk.broadcast(room.id, message, data);
     },
     [room.id],
   );
@@ -88,21 +88,22 @@ export const useDPM = (room: Room) => {
 
   useEffect(() => {
     let cancel: () => Promise<void> = async () => {};
+    console.log('log');
 
     const init = async () => {
-      await window.electron.ataraxia.create(room);
+      await window.electron.sdk.create(room);
 
-      window.electron.ataraxia.onNodeAvailable(room.id, async (node) => {
+      window.electron.sdk.onNodeAvailable(room.id, async (node) => {
         await node.send('ROOM_INFO', room);
         setActiveNodes((prev) => [...prev, node.id]);
       });
 
-      window.electron.ataraxia.onNodeUnavailable(room.id, (node) => {
+      window.electron.sdk.onNodeUnavailable(room.id, (node) => {
         // Handle a node leaving or becoming unavailable.
         setActiveNodes((prev) => prev.filter((id) => id !== node.id));
       });
 
-      window.electron.ataraxia.onMessage(room.id, (msg) => {
+      window.electron.sdk.onMessage(room.id, (msg) => {
         if (msg.type === 'ROOM_INFO') {
           // Store the room information in the Redux store.
           dispatch(setRoom(msg.data));
@@ -133,7 +134,7 @@ export const useDPM = (room: Room) => {
           dispatch(setNextHost(nextHostId));
         }
 
-        await window.electron.ataraxia.destroy(room.id);
+        await window.electron.sdk.destroy(room.id);
       };
     };
 

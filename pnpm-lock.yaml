@@ -47,9 +47,6 @@ dependencies:
   redux:
     specifier: ^4.2.1
     version: 4.2.1
-  redux-persist:
-    specifier: ^6.0.0
-    version: 6.0.0(react@18.2.0)(redux@4.2.1)
   rust-tc-sdk:
     specifier: link:packages/rust_tc_sdk
     version: link:packages/rust_tc_sdk
@@ -133,9 +130,6 @@ devDependencies:
   '@types/redux':
     specifier: ^3.6.0
     version: 3.6.0
-  '@types/redux-persist':
-    specifier: ^4.3.1
-    version: 4.3.1(react@18.2.0)(redux@4.2.1)
   '@types/simple-peer':
     specifier: ^9.11.7
     version: 9.11.7
@@ -268,6 +262,9 @@ devDependencies:
   prettier-plugin-ejs:
     specifier: ^0.0.18
     version: 0.0.18(prettier@3.0.3)
+  prettier-plugin-rust:
+    specifier: ^0.1.9
+    version: 0.1.9
   react-refresh:
     specifier: ^0.14.0
     version: 0.14.0
@@ -3025,16 +3022,6 @@ packages:
       '@types/prop-types': 15.7.9
       '@types/scheduler': 0.16.5
       csstype: 3.1.2
-
-  /@types/redux-persist@4.3.1(react@18.2.0)(redux@4.2.1):
-    resolution: {integrity: sha512-YkMnMUk+4//wPtiSTMfsxST/F9Gh9sPWX0LVxHuOidGjojHtMdpep2cYvQgfiDMnj34orXyZI+QJCQMZDlafKA==}
-    deprecated: This is a stub types definition for redux-persist (https://github.com/rt2zz/redux-persist). redux-persist provides its own type definitions, so you don't need @types/redux-persist installed!
-    dependencies:
-      redux-persist: 6.0.0(react@18.2.0)(redux@4.2.1)
-    transitivePeerDependencies:
-      - react
-      - redux
-    dev: true
 
   /@types/redux@3.6.0:
     resolution: {integrity: sha512-ic+60DXHW5seNyqFvfr7Sk5cnXs+HsF9tIeIaxjOuSP5kzgDXC+AzKTYmjAfuLx4Sccm/0vjwBQj3OOkUkwOqg==}
@@ -8658,6 +8645,10 @@ packages:
       - ts-node
     dev: true
 
+  /jinx-rust@0.1.6:
+    resolution: {integrity: sha512-qP+wtQL1PrDDFwtPKhNGtjWOmijCrKdfUHWTV2G/ikxfjrh+cjdvkQTmny9RAsVF0jiui9m+F0INWu4cuRcZeQ==}
+    dev: true
+
   /jiti@1.20.0:
     resolution: {integrity: sha512-3TV69ZbrvV6U5DfQimop50jE9Dl6J8O1ja1dvBbMba/sZ3YBEQqJ2VZRoQPVnhlzjNtU1vaXRZVrVjU4qtm8yA==}
     hasBin: true
@@ -10681,6 +10672,19 @@ packages:
       prettier: 3.0.3
     dev: true
 
+  /prettier-plugin-rust@0.1.9:
+    resolution: {integrity: sha512-n1DTTJQaHMdnoG/+nKUvBm3EKsMVWsYES2UPCiOPiZdBrmuAO/pX++m7L3+Hz3uuhtddpH0HRKHB2F3jbtJBOQ==}
+    dependencies:
+      jinx-rust: 0.1.6
+      prettier: 2.8.8
+    dev: true
+
+  /prettier@2.8.8:
+    resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
+    engines: {node: '>=10.13.0'}
+    hasBin: true
+    dev: true
+
   /prettier@3.0.3:
     resolution: {integrity: sha512-L/4pUDMxcNa8R/EthV08Zt42WBO4h1rarVtK0K+QJG0X187OLo7l699jWw0GKuwzkPQ//jMFA/8Xm6Fh3J/DAg==}
     engines: {node: '>=14'}
@@ -11048,18 +11052,6 @@ packages:
       indent-string: 4.0.0
       strip-indent: 3.0.0
     dev: true
-
-  /redux-persist@6.0.0(react@18.2.0)(redux@4.2.1):
-    resolution: {integrity: sha512-71LLMbUq2r02ng2We9S215LtPu3fY0KgaGE0k8WRgl6RkqxtGfl7HUozz1Dftwsb0D/5mZ8dwAaPbtnzfvbEwQ==}
-    peerDependencies:
-      react: '>=16'
-      redux: '>4.0.0'
-    peerDependenciesMeta:
-      react:
-        optional: true
-    dependencies:
-      react: 18.2.0
-      redux: 4.2.1
 
   /redux-thunk@2.4.2(redux@4.2.1):
     resolution: {integrity: sha512-+P3TjtnP0k/FEjcBL5FZpoovtvrTNT/UXd4/sluaSyrURlSlhLSzEdfsTBW7WsKB6yPvgd7q/iZPICFjW4o57Q==}

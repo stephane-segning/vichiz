@@ -10,6 +10,8 @@ pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!("./migrations");
 // This is a type alias for the r2d2 connection pool type we'll be using
 #[inline]
 pub fn establish_connection(user_url: Option<String>) -> Pool<ConnectionManager<SqliteConnection>> {
+    log::info!("Establishing connection");
+
     let database_url = match user_url {
         Some(url) if url.len() > 0 => url,
         _ => match get_database_path() {
@@ -19,16 +21,21 @@ pub fn establish_connection(user_url: Option<String>) -> Pool<ConnectionManager<
     };
 
     // Use database_url if it is set, otherwise use DATABASE_URL
+    log::info!("Using database url: {}", database_url);
     let manager = ConnectionManager::<SqliteConnection>::new(database_url);
 
+    log::info!("Creating database pool");
     let pool = Pool::new(manager).expect("Failed to create database pool");
 
+    log::info!("Running migrations");
     run_migrations(&mut *pool.get().expect("Failed to get a connection from the pool")).expect("Failed to run migrations");
 
+    log::info!("Connection established");
     pool
 }
 
 fn run_migrations(connection: &mut impl MigrationHarness<Sqlite>) -> Result<()> {
+    log::info!("Running migrations");
 
     // This will run the necessary migrations.
     //
@@ -38,6 +45,7 @@ fn run_migrations(connection: &mut impl MigrationHarness<Sqlite>) -> Result<()> 
         .run_pending_migrations(MIGRATIONS)
         .unwrap_or_else(|e| panic!("Failed to run migrations {}", e));
 
+    log::info!("Migrations complete");
     Ok(())
 }
 

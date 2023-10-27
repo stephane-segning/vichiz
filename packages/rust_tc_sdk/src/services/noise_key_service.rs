@@ -9,6 +9,7 @@ use crate::entities::noise::NoiseModel;
 use crate::models::error::*;
 use crate::schema::noise_keys::dsl::*;
 
+#[derive(Debug)]
 pub struct NoiseKeyService {
     db_pool: Pool<ConnectionManager<SqliteConnection>>,
 }
@@ -19,22 +20,28 @@ impl NoiseKeyService {
     }
 
     fn generate_ecdsa_keypair(room_id: &str) -> Result<NoiseModel> {
+        log::info!("Generating ECDSA keypair for room {}", room_id);
         let keypair = identity::Keypair::generate_ecdsa();
         let kp = keypair.try_into_ecdsa()?;
 
         let entity = NoiseModel::from((room_id.to_string(), kp.secret().to_bytes(), kp.public().to_bytes()));
 
+        log::info!("Generated ECDSA keypair for room {}", room_id);
         Ok(entity)
     }
 
     #[inline]
     fn from_entity(entity: NoiseModel) -> Result<identity::Keypair> {
+        log::info!("Converting NoiseModel to identity::Keypair");
         let secret = ecdsa::SecretKey::try_from_bytes(&entity.private)?;
         let keypair = identity::ecdsa::Keypair::from(secret);
+
+        log::info!("Converted NoiseModel to identity::Keypair");
         Ok(identity::Keypair::from(keypair))
     }
 
     pub fn create_key(&self, room_id: &str) -> Result<()> {
+        log::info!("Creating ECDSA keypair for room {}", room_id);
         let entity = Self::generate_ecdsa_keypair(room_id)?;
 
         let mut conn = self.db_pool.get()?;
@@ -43,35 +50,44 @@ impl NoiseKeyService {
             .values(entity)
             .execute(&mut conn)?;
 
+        log::info!("Created ECDSA keypair for room {}", room_id);
         Ok(())
     }
 
     pub fn get_key(&self, room_id: &str) -> Result<identity::Keypair> {
+        log::info!("Getting ECDSA keypair for room {}", room_id);
         let conn = &mut self.db_pool.get()?;
         let result: QueryResult<NoiseModel> = noise_keys
             .filter(id.eq(room_id))
             .first(conn);
 
         match result {
-            Ok(entity) => Self::from_entity(entity),
+            Ok(entity) => {
+                log::info!("Got ECDSA keypair for room {}", room_id);
+                Self::from_entity(entity)
+            }
             Err(e) => Err(e.into()),
         }
     }
 
     pub fn delete_key(&self, room_id: &str) -> Result<()> {
+        log::info!("Deleting ECDSA keypair for room {}", room_id);
         let mut conn = self.db_pool.get()?;
         diesel::delete(noise_keys.filter(id.eq(room_id))).execute(&mut conn)?;
 
+        log::info!("Deleted ECDSA keypair for room {}", room_id);
         Ok(())
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use diesel::r2d2::Pool;
     use diesel::r2d2::ConnectionManager;
+    use diesel::r2d2::Pool;
+
     use crate::services::connection::establish_connection;
+
+    use super::*;
 
     fn setup_test_db() -> Pool<ConnectionManager<SqliteConnection>> {
         let database_url = ":memory:"; // SQLite in-memory database
