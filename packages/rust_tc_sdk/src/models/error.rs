@@ -4,6 +4,7 @@ error_chain! {
     foreign_links {
         EitherError(libp2p::swarm::derive_prelude::Either<libp2p::tls::certificate::GenError, libp2p::noise::Error>);
         DieselError(diesel::result::Error);
+        InfallibleError(std::convert::Infallible);
         DieselR2d2Error(diesel::r2d2::Error);
         R2d2Error(r2d2::Error);
         OtherVariant(libp2p::identity::OtherVariantError);

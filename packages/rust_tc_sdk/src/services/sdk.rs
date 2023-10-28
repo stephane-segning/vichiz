@@ -91,7 +91,7 @@ impl RustSDK {
         Ok(room)
     }
 
-    pub fn start_room(&mut self, data: ConnectionData) -> Result<()> {
+    pub async fn start_room(&mut self, data: ConnectionData) -> Result<()> {
         log::info!("Starting room {}", data.room_id);
         // Start the room.
         let room = match self.room_service.get_room(&data.room_id) {
@@ -104,29 +104,36 @@ impl RustSDK {
             Err(_) => panic!("Key not found")
         };
 
-        let swarm: Swarm<AppBehaviour> = create_private_network(room, &data, keypair)?;
+        log::info!("Starting swarm for room {}", data.room_id);
+        let swarm: Swarm<AppBehaviour> = create_private_network(room, &data, keypair).await?;
         self.room_swarms.insert(data.clone().room_id, Arc::new(Mutex::new(swarm)));
 
-        let (sender, receiver) = mpsc::channel(8);
+        log::info!("Starting swarm controller for room {}", data.room_id);
+        let (sender, receiver) = mpsc::channel(100);
         let swarm_arc = self.room_swarms.get(&data.room_id).unwrap().clone();
         tokio::spawn(run_swarm(swarm_arc, receiver));
+        log::info!("Started swarm controller for room {}", data.room_id);
+
         let controller = SwarmController { sender };
         self.room_swarm_controller.insert(data.clone().room_id, controller);
+        log::info!("Started swarm for room {}", data.room_id);
 
         log::info!("Started room {}", data.room_id);
         Ok(())
     }
 
-    pub fn quit_room(&mut self, room_id: &str) -> Result<()> {
+    pub async fn quit_room(&mut self, room_id: &str) -> Result<()> {
         log::info!("Quitting room {}", room_id);
         // Quit the room.
         let _room = self.room_service.get_room(&room_id)
             .expect("Room not found");
 
         log::info!("Stopping swarm for room {}", room_id);
-        let controller = self.room_swarm_controller.get_mut(&room_id.to_string())
-            .expect("Swarm controller not found for room");
-        controller.stop()?;
+        if let Some(controller) = self.room_swarm_controller.get_mut(&room_id.to_string()) {
+            controller.stop().await?;
+        } else {
+            log::info!("Swarm for room {} not found", room_id);
+        }
 
         log::info!("Quit room {}", room_id);
         Ok(())

@@ -16,12 +16,25 @@ export const useVCM = (room?: Room) => {
   const [remoteStreams, setRemoteStreams] = useState<RemoteStreams>({});
   const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
   const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevice, setVideoDevice] = useState<MediaDeviceInfo>();
+  const [audioDevice, setAudioDevice] = useState<MediaDeviceInfo>();
   const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true); // State to track video status
 
   const handleStream = (id: string, stream: MediaStream) => {
     setRemoteStreams((prev) => ({ ...prev, [id]: stream }));
   };
+
+  /* useEffect(() => {
+    if (room) {
+      room.on('stream', handleStream);
+    }
+    return () => {
+      if (room) {
+        room.off('stream', handleStream);
+      }
+    };
+  }, []); */
 
   // Fetch available video input devices
   useEffect(() => {
@@ -49,10 +62,10 @@ export const useVCM = (room?: Room) => {
 
   // Change camera based on the provided deviceId
   const changeCamera = useCallback(
-    (deviceId: string) => {
+    (device: MediaDeviceInfo) => {
       navigator.mediaDevices
         .getUserMedia({
-          video: { deviceId: { exact: deviceId } },
+          video: { deviceId: { exact: device.deviceId } },
           audio: true,
         })
         .then((newStream) => {
@@ -68,8 +81,9 @@ export const useVCM = (room?: Room) => {
             if (localStream) {
               localStream.addTrack(newTrack);
             }
-            setLocalStream(localStream);
           }
+          setLocalStream(newStream);
+          setVideoDevice(device);
           return null;
         })
         .catch((err) => console.error('Failed to change camera', err));
@@ -98,11 +112,11 @@ export const useVCM = (room?: Room) => {
   }, [localStream]);
 
   const changeAudioDevice = useCallback(
-    (deviceId: string) => {
+    (device: MediaDeviceInfo) => {
       navigator.mediaDevices
         .getUserMedia({
           video: true,
-          audio: { deviceId: { exact: deviceId } },
+          audio: { deviceId: { exact: device.deviceId } },
         })
         .then((newStream) => {
           // Stop old track
@@ -117,8 +131,9 @@ export const useVCM = (room?: Room) => {
             if (localStream) {
               localStream.addTrack(newTrack);
             }
-            setLocalStream(localStream);
           }
+          setLocalStream(newStream);
+          setAudioDevice(device);
           return null;
         })
         .catch((err) => console.error('Failed to change audio device', err));
@@ -138,5 +153,7 @@ export const useVCM = (room?: Room) => {
     changeAudioDevice,
     toggleVideo,
     isVideoOn,
+    videoDevice,
+    audioDevice,
   };
 };

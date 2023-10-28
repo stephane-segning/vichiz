@@ -47,7 +47,7 @@ ipcMain.handle('net-remove', async (_, roomId: string) => {
 });
 
 ipcMain.handle('net-open-room', async (_, roomId: string) => {
-  launchRoom({ room_id: roomId });
+  launchRoom({ room_id: roomId, room_listen_on: [], room_multi_address: [] });
 });
 
 ipcMain.handle('net-close-room', async (_, roomId: string) => {

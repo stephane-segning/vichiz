@@ -8,10 +8,12 @@ import {
   MoreHorizontal,
 } from 'react-feather';
 import { useSelector } from 'react-redux';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useDPM } from '../hooks/dpm';
 import { useVCM } from '../hooks/vcm';
 import { roomSelector } from '../redux/room';
+import { VideoDisplay } from './video-display';
+import VideoCard from './video-block';
 
 export function RoomPage() {
   const localVid = useRef<HTMLVideoElement>();
@@ -28,14 +30,31 @@ export function RoomPage() {
     isVideoOn,
     muteAudio,
     isAudioMuted,
-    toggleVideo,
+    videoDevice,
   } = useVCM(room);
+  const otherStreams = [
+    localStream,
+    localStream,
+    localStream,
+    localStream,
+    localStream,
+  ];
 
   useEffect(() => {
-    if (!localVid.current) return;
+    if (!localStream || !localVid.current) return () => {};
 
-    localVid.current!.srcObject = localStream;
-  }, [localStream]);
+    const videoElement = localVid.current!;
+    videoElement.srcObject = localStream;
+    // videoElement.play();
+    console.log('localStream', localStream);
+    return () => {
+      videoElement.srcObject = null;
+    };
+  }, [localStream, localVid]);
+
+  const handleStreamClick = useCallback((stream: MediaStream) => {
+    // TODO: handle stream click
+  }, []);
 
   const logOut = () => {
     navigate('/');
@@ -64,7 +83,7 @@ export function RoomPage() {
                   <div key={device.deviceId}>
                     <button
                       type="button"
-                      onClick={() => changeCamera(device.deviceId)}
+                      onClick={() => changeCamera(device)}
                       className="btn btn-ghost btn-block">
                       {device.label}
                     </button>
@@ -88,7 +107,7 @@ export function RoomPage() {
                   <div key={device.deviceId}>
                     <button
                       type="button"
-                      onClick={() => changeAudioDevice(device.deviceId)}
+                      onClick={() => changeAudioDevice(device)}
                       className="btn btn-ghost btn-block">
                       {device.label}
                     </button>
@@ -110,8 +129,27 @@ export function RoomPage() {
         </div>
       </div>
 
-      <div className="artboard artboard-horizontal phone-5">
-        <video ref={localVid} className="h-full w-full" autoPlay muted />
+      <div className="w-screen h-[calc(100vh-64px)] relative">
+        <div className="absolute inset-0">
+          <VideoDisplay stream={localStream} />
+        </div>
+        <div className="absolute bottom-0 left-0 w-full p-4 space-x-4 bg-opacity-25 bg-black">
+          <div className="flex items-center justify-start overflow-x-auto">
+            {otherStreams.map((stream, index) => (
+              <div
+                key={`${index}-video`}
+                className="flex-none h-40 w-[200px] p-2">
+                <div className="card bordered shadow-lg">
+                  <VideoCard
+                    stream={stream}
+                    details="details"
+                    onClick={() => handleStreamClick(stream)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

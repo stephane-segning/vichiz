@@ -24,6 +24,8 @@ module.exports = {
     'jsx-a11y/click-events-have-key-events': 'warn',
     'jsx-a11y/no-static-element-interactions': 'warn',
     'no-restricted-syntax': 'off',
+    'jsx-a11y/media-has-caption': 'off',
+    'react/no-array-index-key': 'warn',
   },
   parserOptions: {
     ecmaVersion: 2022,

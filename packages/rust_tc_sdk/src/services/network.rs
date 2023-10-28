@@ -1,19 +1,25 @@
 use std::collections::hash_map::DefaultHasher;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
+use std::net::Ipv4Addr;
 use std::sync::Arc;
 use std::time::Duration;
 
-use futures::StreamExt;
+use futures::{FutureExt, StreamExt, TryFutureExt, TryStreamExt};
 use libp2p::{
     gossipsub,
     identify, identity,
     mdns, Multiaddr,
     noise, ping,
-    Swarm,
-    tcp, tls,
+    relay,
+    Swarm, tcp,
     upnp, yamux,
 };
+use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
+use libp2p_webrtc;
+use libp2p_webrtc::tokio::Certificate;
+use rand::thread_rng;
 use tokio::sync::{mpsc, Mutex};
 
 use crate::entities::room::Room;
@@ -23,19 +29,22 @@ use crate::models::error::*;
 use crate::services::swarm_controller::ControlMessage;
 
 #[inline]
-#[tokio::main]
 pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
     log::info!("Creating private network");
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
         .with_tokio()
         .with_tcp(
             tcp::Config::default(),
-            (tls::Config::new, noise::Config::new),
+            noise::Config::new,
             yamux::Config::default,
         )?
         .with_quic()
+        .with_other_transport(|key| {
+            libp2p_webrtc::tokio::Transport::new(key.clone(), Certificate::generate(&mut thread_rng()).unwrap())
+        })?
         .with_dns()?
-        .with_behaviour(|key| {
+        .with_relay_client(noise::Config::new, yamux::Config::default)?
+        .with_behaviour(|key, _| {
             // To content-address message, we can take the hash of message and use it as an ID.
             let message_id_fn = |message: &gossipsub::Message| {
                 let mut s = DefaultHasher::new();
@@ -68,9 +77,16 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
                 identify::Config::new("/ipfs/0.1.0".into(), key.public()),
             );
 
-            Ok(AppBehaviour::from((gossip_sub, mdns, upnp, ping, identify)))
+            let relay = relay::Behaviour::new(key.public().to_peer_id(), relay::Config::default());
+
+            Ok(AppBehaviour::from((gossip_sub, mdns, upnp, ping, identify, relay)))
         })
         .unwrap_or_else(|err| panic!("Failed to build behaviour: {:?}", err))
+        .with_swarm_config(|cfg| {
+            cfg.with_idle_connection_timeout(
+                Duration::from_secs(u64::MAX),
+            )
+        })
         .build();
 
     log::info!("Starting private network");
@@ -81,18 +97,38 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
     // subscribes to our topic
     swarm.behaviour_mut().gossip_sub_mut().subscribe(&topic)?;
 
-    log::info!("Listening on: {:?}", config.room_listen_on);
-    // Tell the swarm to listen on all interfaces and a random, OS-assigned
-    // port.
-    for url in &config.room_listen_on {
-        swarm.listen_on(url.parse()?)?;
+    if config.room_listen_on.len() > 0 {
+        log::info!("Listening on: {:?}", config.room_listen_on);
+        // Tell the swarm to listen on all interfaces and a random, OS-assigned
+        // port.
+        for url in &config.room_listen_on {
+            swarm.listen_on(url.parse()?)?;
+        }
+    } else {
+        let address_webrtc = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
+            .with(Protocol::Tcp(21000));
+        log::info!("Will listen on: {:?}", address_webrtc);
+        swarm.listen_on(address_webrtc)?;
+
+        // let address_webrtc = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
+        //     .with(Protocol::Ws("ws-relay".into()));
+        // log::info!("Will listen on: {:?}", address_webrtc);
+        // swarm.listen_on(address_webrtc)?;
+
+        let address_webrtc = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
+            .with(Protocol::Udp(21000))
+            .with(Protocol::QuicV1);
+        log::info!("Will listen on: {:?}", address_webrtc);
+        swarm.listen_on(address_webrtc)?;
     }
 
-    log::info!("Listening on: {:?}", config.room_multi_address);
-    for addr in &config.room_multi_address {
-        let remote: Multiaddr = addr.parse()?;
-        swarm.dial(remote)?;
-        log::info!("Dialed {addr}")
+    if !config.room_multi_address.is_empty() {
+        log::info!("Multiroom: Listening on: {:?}", config.room_multi_address);
+        for addr in &config.room_multi_address {
+            let remote: Multiaddr = addr.parse()?;
+            swarm.dial(remote)?;
+            log::info!("Dialed {addr}")
+        }
     }
 
     Ok(swarm)
@@ -100,25 +136,29 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
 
 #[inline]
 pub async fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, mut receiver: mpsc::Receiver<ControlMessage>) {
+    log::info!("Running swarm...");
     loop {
         tokio::select! {
             message = receiver.recv() => {
                 if let Some(ControlMessage::Stop) = message {
-                    log::info!("Stopping the swarm...");
+                    log::info!("Actually stopping the swarm...");
                     break;
                 }
                 // You can handle other messages here if needed
             }
-            _ = process_swarm_events(&swarm) => {}
+            _ = tokio::spawn(process_swarm_events(swarm.clone())) => {}
         }
     }
 }
 
-async fn process_swarm_events(swarm: &Arc<Mutex<Swarm<AppBehaviour>>>) {
-    let swarm_event = {
-        let mut locked_swarm = swarm.lock().await;
-        locked_swarm.select_next_some().await
-    };
+async fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
+    log::info!("Processing swarm events...");
+
+    let mut locked_swarm = swarm.lock().await;
+    log::info!("Swarm locked");
+
+    let swarm_event = locked_swarm.select_next_some().await;
+    log::info!("Swarm select_next_some");
 
     // Handle the swarm_event as before:
     match swarm_event {
@@ -159,6 +199,8 @@ async fn process_swarm_events(swarm: &Arc<Mutex<Swarm<AppBehaviour>>>) {
         event => {
             log::info!("Some other event: {:?}", event);
         }
-    }
+    };
+
+    Ok(())
 }
 

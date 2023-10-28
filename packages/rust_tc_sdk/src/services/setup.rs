@@ -129,11 +129,12 @@ pub(crate) async fn launch_room(mut cx: FunctionContext) -> JsResult<JsUndefined
     let arg0 = cx.argument::<JsValue>(0)?;
 
     let data: ConnectionData = from_value(&mut cx, arg0)
-        .or_else(|e| cx.throw_error(e.to_string()))
-        .unwrap();
+        .or_else(|e| cx.throw_error(e.to_string()))?;
 
     let mut sdk = CONFIG.get().lock().await;
-    sdk.start_room(data).expect("TODO: panic message");
+    if let Err(e) = sdk.start_room(data).await {
+        panic!("Failed to launch room {}", e);
+    }
 
     log::info!("Room launched");
     Ok(cx.undefined())
@@ -149,7 +150,9 @@ pub(crate) async fn quit_room(mut cx: FunctionContext) -> JsResult<JsUndefined> 
         .unwrap();
 
     let mut sdk = CONFIG.get().lock().await;
-    sdk.quit_room(room_id.id.as_str()).expect("TODO: panic message");
+    if let Err(e) = sdk.quit_room(room_id.id.as_str()).await {
+        panic!("Failed to quit room {}", e);
+    }
 
     log::info!("Room quit");
     Ok(cx.undefined())
