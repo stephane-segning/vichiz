@@ -5,7 +5,6 @@ use libp2p::{
     identify,
     mdns,
     ping,
-    upnp,
     relay
 };
 use libp2p::swarm::*;
@@ -17,9 +16,6 @@ pub struct AppBehaviour {
 
     #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
     mdns: mdns::tokio::Behaviour,
-
-    #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
-    upnp: upnp::tokio::Behaviour,
 
     #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
     ping: ping::Behaviour,

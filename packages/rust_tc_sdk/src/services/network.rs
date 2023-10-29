@@ -1,26 +1,20 @@
 use std::collections::hash_map::DefaultHasher;
-use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::net::Ipv4Addr;
-use std::sync::Arc;
+use std::sync::{Arc, mpsc, Mutex};
 use std::time::Duration;
 
-use futures::{FutureExt, StreamExt, TryFutureExt, TryStreamExt};
+use futures::{executor::block_on, StreamExt};
 use libp2p::{
     gossipsub,
     identify, identity,
     mdns, Multiaddr,
     noise, ping,
     relay,
-    Swarm, tcp,
-    upnp, yamux,
+    Swarm, tcp, yamux,
 };
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
-use libp2p_webrtc;
-use libp2p_webrtc::tokio::Certificate;
-use rand::thread_rng;
-use tokio::sync::{mpsc, Mutex};
 
 use crate::entities::room::Room;
 use crate::models::behaviour::*;
@@ -28,21 +22,20 @@ use crate::models::connection_data::ConnectionData;
 use crate::models::error::*;
 use crate::services::swarm_controller::ControlMessage;
 
-#[inline]
-pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
+pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
     log::info!("Creating private network");
-    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
-        .with_tokio()
+    let builder = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_async_std()
         .with_tcp(
             tcp::Config::default(),
             noise::Config::new,
             yamux::Config::default,
         )?
-        .with_quic()
-        .with_other_transport(|key| {
-            libp2p_webrtc::tokio::Transport::new(key.clone(), Certificate::generate(&mut thread_rng()).unwrap())
-        })?
-        .with_dns()?
+        .with_quic();
+
+    let builder = block_on(builder.with_dns())?;
+
+    let mut swarm = builder
         .with_relay_client(noise::Config::new, yamux::Config::default)?
         .with_behaviour(|key, _| {
             // To content-address message, we can take the hash of message and use it as an ID.
@@ -57,8 +50,7 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
                 .heartbeat_interval(Duration::from_secs(10)) // This is set to aid debugging by not cluttering the log space
                 .validation_mode(gossipsub::ValidationMode::Strict) // This sets the kind of message validation. The default is Strict (enforce message signing)
                 .message_id_fn(message_id_fn) // content-address messages. No two messages of the same content will be propagated.
-                .build()
-                .map_err(|msg| tokio::io::Error::new(tokio::io::ErrorKind::Other, msg))?; // Temporary hack because `build` does not return a proper `std::error::Error`.
+                .build()?; // Temporary hack because `build` does not return a proper `std::error::Error`.
 
             // build a gossipsub network behaviour
             let gossip_sub = gossipsub::Behaviour::new(
@@ -69,8 +61,6 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
             let mdns =
                 mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
 
-            let upnp = upnp::tokio::Behaviour::from(upnp::tokio::Behaviour::default());
-
             let ping = ping::Behaviour::new(ping::Config::new());
 
             let identify = identify::Behaviour::new(
@@ -79,7 +69,7 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
 
             let relay = relay::Behaviour::new(key.public().to_peer_id(), relay::Config::default());
 
-            Ok(AppBehaviour::from((gossip_sub, mdns, upnp, ping, identify, relay)))
+            Ok(AppBehaviour::from((gossip_sub, mdns, ping, identify, relay)))
         })
         .unwrap_or_else(|err| panic!("Failed to build behaviour: {:?}", err))
         .with_swarm_config(|cfg| {
@@ -90,6 +80,7 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
         .build();
 
     log::info!("Starting private network");
+
     // Create a Gossipsub topic
     let topic = gossipsub::IdentTopic::new("test-net");
 
@@ -105,21 +96,10 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
             swarm.listen_on(url.parse()?)?;
         }
     } else {
-        let address_webrtc = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
+        let address_to_listen = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
             .with(Protocol::Tcp(21000));
-        log::info!("Will listen on: {:?}", address_webrtc);
-        swarm.listen_on(address_webrtc)?;
-
-        // let address_webrtc = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
-        //     .with(Protocol::Ws("ws-relay".into()));
-        // log::info!("Will listen on: {:?}", address_webrtc);
-        // swarm.listen_on(address_webrtc)?;
-
-        let address_webrtc = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
-            .with(Protocol::Udp(21000))
-            .with(Protocol::QuicV1);
-        log::info!("Will listen on: {:?}", address_webrtc);
-        swarm.listen_on(address_webrtc)?;
+        log::info!("Will listen on: {:?}", address_to_listen);
+        swarm.listen_on(address_to_listen)?;
     }
 
     if !config.room_multi_address.is_empty() {
@@ -134,56 +114,42 @@ pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: i
     Ok(swarm)
 }
 
-#[inline]
-pub async fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, mut receiver: mpsc::Receiver<ControlMessage>) {
+pub fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, mut receiver: mpsc::Receiver<ControlMessage>) {
     log::info!("Running swarm...");
     loop {
-        tokio::select! {
-            message = receiver.recv() => {
-                if let Some(ControlMessage::Stop) = message {
-                    log::info!("Actually stopping the swarm...");
-                    break;
-                }
-                // You can handle other messages here if needed
+        if let message = receiver.recv() {
+            if let Ok(ControlMessage::Stop) = message {
+                log::info!("Actually stopping the swarm...");
+                break;
             }
-            _ = tokio::spawn(process_swarm_events(swarm.clone())) => {}
+
+            // You can handle other messages here if needed
         }
-    }
+
+        if let Err(e) = process_swarm_events(swarm.clone()) {
+            log::error!("Error while processing swarm events: {:?}", e);
+        }
+    };
 }
 
-async fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
+fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
     log::info!("Processing swarm events...");
 
-    let mut locked_swarm = swarm.lock().await;
+    let mut locked_swarm = swarm.lock().unwrap();
     log::info!("Swarm locked");
 
-    let swarm_event = locked_swarm.select_next_some().await;
-    log::info!("Swarm select_next_some");
 
-    // Handle the swarm_event as before:
-    match swarm_event {
-        SwarmEvent::Behaviour(AppBehaviourEvent::Upnp(upnp::Event::NewExternalAddr(addr))) => {
-            log::info!("New external address: {addr}");
-        }
-        SwarmEvent::Behaviour(AppBehaviourEvent::Upnp(upnp::Event::ExpiredExternalAddr(addr))) => {
-            log::info!("Expired external address: {addr}");
-        }
-        SwarmEvent::Behaviour(AppBehaviourEvent::Upnp(upnp::Event::GatewayNotFound)) => {
-            log::info!("Gateway does not support UPnP");
-        }
-        SwarmEvent::Behaviour(AppBehaviourEvent::Upnp(upnp::Event::NonRoutableGateway)) => {
-            log::info!("Gateway is not exposed directly to the public Internet, i.e. it itself has a private IP address.");
-        }
+    match block_on(locked_swarm.select_next_some()) {
         SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
             for (peer_id, _multiaddr) in list {
                 log::info!("mDNS discovered a new peer: {peer_id}");
-                swarm.lock().await.behaviour_mut().gossip_sub_mut().add_explicit_peer(&peer_id);
+                locked_swarm.behaviour_mut().gossip_sub_mut().add_explicit_peer(&peer_id);
             }
         }
         SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
             for (peer_id, _multiaddr) in list {
                 log::info!("mDNS discover peer has expired: {peer_id}");
-                swarm.lock().await.behaviour_mut().gossip_sub_mut().remove_explicit_peer(&peer_id);
+                locked_swarm.behaviour_mut().gossip_sub_mut().remove_explicit_peer(&peer_id);
             }
         }
         SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: _ })) => {

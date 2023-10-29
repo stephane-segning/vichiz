@@ -45,14 +45,12 @@ export function RoomPage() {
 
     const videoElement = localVid.current!;
     videoElement.srcObject = localStream;
-    // videoElement.play();
-    console.log('localStream', localStream);
     return () => {
       videoElement.srcObject = null;
     };
   }, [localStream, localVid]);
 
-  const handleStreamClick = useCallback((stream: MediaStream) => {
+  const handleStreamClick = useCallback((stream?: MediaStream) => {
     // TODO: handle stream click
   }, []);
 

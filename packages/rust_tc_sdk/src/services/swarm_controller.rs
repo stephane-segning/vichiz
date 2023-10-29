@@ -1,4 +1,4 @@
-use tokio::sync::mpsc;
+use std::sync::mpsc;
 
 use crate::models::error::*;
 
@@ -12,10 +12,8 @@ pub struct SwarmController {
 }
 
 impl SwarmController {
-    pub async fn stop(&self) -> Result<()> {
-        self.sender.send(ControlMessage::Stop).await?;
+    pub fn stop(&self) -> Result<()> {
+        self.sender.send(ControlMessage::Stop)?;
         Ok(())
     }
-
-    // Add more control methods if needed.
 }

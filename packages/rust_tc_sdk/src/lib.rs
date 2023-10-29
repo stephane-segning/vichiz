@@ -10,7 +10,7 @@ mod schema;
 
 #[neon::main]
 fn main(mut cx: ModuleContext) -> NeonResult<()> {
-    setup_logger("debug");
+    setup_logger("info");
 
     cx.export_function("startSdk", start_sdk)?;
     cx.export_function("stopSdk", stop_sdk)?;

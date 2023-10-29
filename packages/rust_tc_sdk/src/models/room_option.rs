@@ -11,15 +11,6 @@ pub struct RoomOption {
     pub name: String,
 }
 
-impl RoomOption {
-    pub fn new<S: Into<String>>(id: Option<S>, name: S) -> Self {
-        Self {
-            id: id.map(|s| s.into()),
-            name: name.into(),
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

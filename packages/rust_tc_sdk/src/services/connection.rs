@@ -43,7 +43,7 @@ fn run_migrations(connection: &mut impl MigrationHarness<Sqlite>) -> Result<()> 
     // all available methods.
     connection
         .run_pending_migrations(MIGRATIONS)
-        .unwrap_or_else(|e| panic!("Failed to run migrations {}", e));
+        .unwrap_or_else(|e| panic!("Failed to run migrations: {}", e));
 
     log::info!("Migrations complete");
     Ok(())

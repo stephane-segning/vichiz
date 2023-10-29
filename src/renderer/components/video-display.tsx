@@ -2,9 +2,10 @@ import { useEffect, useRef } from 'react';
 
 interface VideoDisplayProps {
   stream?: MediaStream;
+  rounded?: boolean;
 }
 
-export function VideoDisplay({ stream }: VideoDisplayProps) {
+export function VideoDisplay({ stream, rounded }: VideoDisplayProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -16,7 +17,7 @@ export function VideoDisplay({ stream }: VideoDisplayProps) {
   return (
     <video
       ref={videoRef}
-      className="w-full h-full object-cover rounded-lg"
+      className={`w-full h-full object-cover ${rounded ? 'rounded' : ''}`}
       autoPlay
       playsInline
     />

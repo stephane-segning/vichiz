@@ -2,7 +2,6 @@ use diesel::{ExpressionMethods, QueryResult, RunQueryDsl};
 use diesel::prelude::*;
 use diesel::r2d2::*;
 use diesel::sqlite::SqliteConnection;
-use tokio_diesel::*;
 
 use crate::entities::room::Room;
 use crate::models::error::*;

@@ -1,22 +1,28 @@
 use error_chain::error_chain;
+use libp2p::core::transport::TransportError as BaseTransportError;
+use libp2p::noise::Error as BaseNoiseError;
+use libp2p::swarm::derive_prelude::*;
+use libp2p::tls::certificate::GenError;
+
+use crate::services::swarm_controller::ControlMessage;
 
 error_chain! {
     foreign_links {
-        EitherError(libp2p::swarm::derive_prelude::Either<libp2p::tls::certificate::GenError, libp2p::noise::Error>);
+        EitherError(Either<GenError, BaseNoiseError>);
         DieselError(diesel::result::Error);
         InfallibleError(std::convert::Infallible);
         DieselR2d2Error(diesel::r2d2::Error);
         R2d2Error(r2d2::Error);
         OtherVariant(libp2p::identity::OtherVariantError);
         Decoding(libp2p::identity::DecodingError);
-        NoiseError(libp2p::noise::Error);
+        NoiseError(BaseNoiseError);
         DialError(libp2p::swarm::DialError);
         TlsCertificate(libp2p::tls::certificate::GenError);
         StdError(std::io::Error);
         SubscriptionError(libp2p::gossipsub::SubscriptionError);
         MultiAddrError(libp2p::multiaddr::Error);
-        TransportError(libp2p::core::transport::TransportError<std::io::Error>);
-        TokioControlMessageError(tokio::sync::mpsc::error::SendError<crate::services::swarm_controller::ControlMessage>);
+        TransportError(BaseTransportError<std::io::Error>);
+        ControlMessageSendError(std::sync::mpsc::SendError<ControlMessage>);
     }
 
     errors {
@@ -36,7 +42,7 @@ mod tests {
         let error: std::result::Result<String, Error> = Err(Error::from(ErrorKind::KeyNotFound));
 
         match error {
-            Err(Error(ErrorKind::KeyNotFound, _)) => {},
+            Err(Error(ErrorKind::KeyNotFound, _)) => {}
             _ => panic!("Unexpected error type!"),
         }
     }
@@ -52,7 +58,7 @@ mod tests {
 
         // Assert on the error type:
         match custom_error {
-            Err(Error(ErrorKind::DieselError(_), _)) => {},
+            Err(Error(ErrorKind::DieselError(_), _)) => {}
             _ => panic!("Unexpected error type!"),
         }
     }
