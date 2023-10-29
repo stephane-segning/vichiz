@@ -160,19 +160,3 @@ pub(crate) fn register_listener(mut cx: FunctionContext) -> JsResult<JsUndefined
     log::info!("Listener registered");
     Ok(cx.undefined())
 }
-
-pub(crate) fn setup_logger(log_level: &str) {
-    let ll = match log_level {
-        "trace" => log::LevelFilter::Trace,
-        "debug" => log::LevelFilter::Debug,
-        "info" => log::LevelFilter::Info,
-        "warn" => log::LevelFilter::Warn,
-        "error" => log::LevelFilter::Error,
-        _ => log::LevelFilter::Off,
-    };
-
-    Builder::from_default_env()
-        .filter_level(ll)
-        .target(Target::Stdout)
-        .init();
-}
