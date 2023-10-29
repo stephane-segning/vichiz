@@ -15,7 +15,7 @@ pub struct AppBehaviour {
     gossip_sub: gossipsub::Behaviour,
 
     #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
-    mdns: mdns::async_io::Behaviour,
+    mdns: mdns::tokio::Behaviour,
 
     #[getset(get_copy = "pub", get_mut = "pub", get = "pub")]
     ping: ping::Behaviour,

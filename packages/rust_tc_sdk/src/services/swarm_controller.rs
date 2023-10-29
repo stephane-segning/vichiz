@@ -1,7 +1,8 @@
-use std::sync::mpsc;
+use tokio::sync::mpsc;
 
 use crate::models::error::*;
 
+#[derive(Debug, PartialEq)]
 pub enum ControlMessage {
     Stop,
     // Add more control commands if needed.
@@ -12,8 +13,8 @@ pub struct SwarmController {
 }
 
 impl SwarmController {
-    pub fn stop(&self) -> Result<()> {
-        self.sender.send(ControlMessage::Stop)?;
+    pub async fn stop(&self) -> Result<()> {
+        self.sender.send(ControlMessage::Stop).await?;
         Ok(())
     }
 }

@@ -23,6 +23,7 @@ error_chain! {
         MultiAddrError(libp2p::multiaddr::Error);
         TransportError(BaseTransportError<std::io::Error>);
         ControlMessageSendError(std::sync::mpsc::SendError<ControlMessage>);
+        TokioControlMessageError(tokio::sync::mpsc::error::SendError<crate::services::swarm_controller::ControlMessage>);
     }
 
     errors {

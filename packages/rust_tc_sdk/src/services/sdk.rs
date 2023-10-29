@@ -1,6 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, mpsc, Mutex};
-use std::thread::spawn;
+use tokio::sync::{mpsc, Mutex};
+use std::sync::{Arc};
 
 use libp2p::Swarm;
 use neon::prelude::*;
@@ -115,9 +115,9 @@ impl RustSDK {
         self.room_swarms.insert(data.clone().room_id, Arc::new(Mutex::new(swarm)));
 
         log::info!("Starting swarm controller for room {}", data.room_id);
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = mpsc::channel(8);
         let swarm_arc = self.room_swarms.get(&data.room_id).unwrap().clone();
-        spawn(|| run_swarm(swarm_arc, receiver));
+        tokio::spawn(run_swarm(swarm_arc, receiver));
         log::info!("Started swarm controller for room {}", data.room_id);
 
         let controller = SwarmController { sender };
@@ -128,7 +128,7 @@ impl RustSDK {
         Ok(())
     }
 
-    pub fn quit_room(&mut self, room_id: &str) -> Result<()> {
+    pub async fn quit_room(&mut self, room_id: &str) -> Result<()> {
         log::info!("Quitting room {}", room_id);
         // Quit the room.
         let _room = self.room_service.get_room(&room_id)
@@ -136,14 +136,14 @@ impl RustSDK {
 
         log::info!("Stopping swarm for room {}", room_id);
         if let Some(controller) = self.room_swarm_controller.get_mut(&room_id.to_string()) {
-            controller.stop()?;
+            controller.stop().await?;
         } else {
             log::info!("Swarm for room {} not found", room_id);
         }
 
-        log::info!("Stopping swarm for room {}", room_id);
+        log::info!("Dropping swarm for room {}", room_id);
         if let Some(mutex) = self.room_swarms.get_mut(&room_id.to_string()) {
-            let swarm = mutex.lock().unwrap();
+            let swarm = mutex.lock().await;
             drop(swarm);
         } else {
             log::info!("Swarm for room {} not found", room_id);

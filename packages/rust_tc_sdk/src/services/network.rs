@@ -1,20 +1,26 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::net::Ipv4Addr;
-use std::sync::{Arc, mpsc, Mutex};
+use std::sync::Arc;
 use std::time::Duration;
 
-use futures::{executor::block_on, StreamExt};
 use libp2p::{
     gossipsub,
     identify, identity,
     mdns, Multiaddr,
     noise, ping,
-    relay,
+    relay, tls,
     Swarm, tcp, yamux,
 };
+use libp2p::futures::StreamExt;
 use libp2p::multiaddr::Protocol;
 use libp2p::swarm::SwarmEvent;
+use libp2p_webrtc;
+use libp2p_webrtc::tokio::Certificate;
+use tokio::select;
+use tokio::sync::{mpsc, Mutex};
+use rand::thread_rng;
+use tokio::sync::mpsc::error::TryRecvError;
 
 use crate::entities::room::Room;
 use crate::models::behaviour::*;
@@ -24,19 +30,19 @@ use crate::services::swarm_controller::ControlMessage;
 
 pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
     log::info!("Creating private network");
-    let builder = libp2p::SwarmBuilder::with_existing_identity(keypair)
-        .with_async_std()
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair)
+        .with_tokio()
         .with_tcp(
             tcp::Config::default(),
-            noise::Config::new,
+            (tls::Config::new, noise::Config::new),
             yamux::Config::default,
         )?
-        .with_quic();
-
-    let builder = block_on(builder.with_dns())?;
-
-    let mut swarm = builder
-        .with_relay_client(noise::Config::new, yamux::Config::default)?
+        .with_quic()
+        .with_other_transport(|key| {
+            libp2p_webrtc::tokio::Transport::new(key.clone(), Certificate::generate(&mut thread_rng()).unwrap())
+        })?
+        .with_dns()?
+        .with_relay_client((tls::Config::new, noise::Config::new), yamux::Config::default)?
         .with_behaviour(|key, _| {
             // To content-address message, we can take the hash of message and use it as an ID.
             let message_id_fn = |message: &gossipsub::Message| {
@@ -59,7 +65,7 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
             )?;
 
             let mdns =
-                mdns::async_io::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
+                mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
 
             let ping = ping::Behaviour::new(ping::Config::new());
 
@@ -114,55 +120,50 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
     Ok(swarm)
 }
 
-pub fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, receiver: mpsc::Receiver<ControlMessage>) {
+pub async fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, mut receiver: mpsc::Receiver<ControlMessage>) {
     log::info!("Running swarm...");
-    loop {
-        if let Ok(ControlMessage::Stop) = receiver.recv() {
-            log::info!("Actually stopping the swarm...");
-            break;
-        }
-
-        if let Err(e) = process_swarm_events(swarm.clone()) {
-            log::error!("Error while processing swarm events: {:?}", e);
-        }
-    };
-}
-
-fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
-    log::info!("Processing swarm events...");
-
-    let mut locked_swarm = swarm.lock().unwrap();
-    log::info!("Swarm locked");
-
-
-    match block_on(locked_swarm.select_next_some()) {
-        SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
-            for (peer_id, _multiaddr) in list {
-                log::info!("mDNS discovered a new peer: {peer_id}");
-                locked_swarm.behaviour_mut().gossip_sub_mut().add_explicit_peer(&peer_id);
+    's: loop {
+        log::info!("Waiting for swarm event...");
+        match receiver.try_recv() {
+            Ok(ControlMessage::Stop) => {
+                log::info!("Stopping the swarm...");
+                break 's;
             }
-        }
-        SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
-            for (peer_id, _multiaddr) in list {
-                log::info!("mDNS discover peer has expired: {peer_id}");
-                locked_swarm.behaviour_mut().gossip_sub_mut().remove_explicit_peer(&peer_id);
-            }
-        }
-        SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: _ })) => {
-            log::info!("Ping event from: {:?}", peer);
-        }
-        SwarmEvent::Behaviour(AppBehaviourEvent::GossipSub(gossipsub::Event::Message { propagation_source: peer_id, message_id: id, message, })) => log::info!(
-            "Got message: '{}' with id: {id} from peer: {peer_id}",
-            String::from_utf8_lossy(&message.data),
-        ),
-        SwarmEvent::NewListenAddr { address, .. } => {
-            log::info!("Local node is listening on {address}");
-        }
-        event => {
-            log::info!("Some other event: {:?}", event);
-        }
-    };
+            _ => {}
+        };
 
-    Ok(())
+        log::info!("Waiting for swarm event...");
+
+        let mut locked_swarm = swarm.lock().await;
+        let swarm_event = locked_swarm.select_next_some().await;
+
+        match swarm_event {
+            SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+                for (peer_id, _multiaddr) in list {
+                    log::info!("mDNS discovered a new peer: {peer_id}");
+                    locked_swarm.behaviour_mut().gossip_sub_mut().add_explicit_peer(&peer_id);
+                }
+            }
+            SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
+                for (peer_id, _multiaddr) in list {
+                    log::info!("mDNS discover peer has expired: {peer_id}");
+                    locked_swarm.behaviour_mut().gossip_sub_mut().remove_explicit_peer(&peer_id);
+                }
+            }
+            SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: _ })) => {
+                log::info!("Ping event from: {:?}", peer);
+            }
+            SwarmEvent::Behaviour(AppBehaviourEvent::GossipSub(gossipsub::Event::Message { propagation_source: peer_id, message_id: id, message, })) => log::info!(
+                        "Got message: '{}' with id: {id} from peer: {peer_id}",
+                        String::from_utf8_lossy(&message.data),
+                    ),
+            SwarmEvent::NewListenAddr { address, .. } => {
+                log::info!("Local node is listening on {address}");
+            }
+            event => {
+                log::info!("Some other event: {:?}", event);
+            }
+        };
+    };
 }
 
