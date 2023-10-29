@@ -117,7 +117,7 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
 pub fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, receiver: mpsc::Receiver<ControlMessage>) {
     log::info!("Running swarm...");
     loop {
-        if let Ok(ControlMessage::Stop) = receiver.recv() {
+        if let Ok(ControlMessage::Stop) = receiver.try_recv() {
             log::info!("Actually stopping the swarm...");
             break;
         }
