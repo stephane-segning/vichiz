@@ -15,9 +15,7 @@ lazy_static = "1.4.0"
 error-chain = "0.12.4"
 r2d2 = "0"
 state = "0"
-rand = { version = "0.8.5", features = ["serde", "default"] }
 
-libp2p-webrtc = { version = "0.6.1-alpha", features = ["tokio"] }
 log = "0.4.20"
 env_logger = "0.10.0"
 
@@ -39,18 +37,33 @@ dirs = "5.0.1"
 [dependencies.neon]
 version = "0.10.1"
 default-features = false
-features = ["napi-6"]
+features = ["napi-latest"]
 
 [dependencies.libp2p]
 version = "0.52.4"
 features = [
-    "full"
+    "noise",
+    "mdns",
+    "tcp",
+    "websocket",
+    "yamux",
+    "ecdsa",
+    "tls",
+    "dns",
+    "gossipsub",
+    "ping",
+    "async-std",
+    "identify",
+    "relay",
+    "serde",
+    "macros",
+    "quic"
 ]
 
 [dependencies.uuid]
 version = "1.5.0"
 features = [
-    "v4", # Lets you generate random UUIDs
+    "v4", "v5", "v6", # Lets you generate random UUIDs
     "fast-rng", # Use a faster (but still sufficiently random) RNG
     "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
 ]

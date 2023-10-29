@@ -79,7 +79,7 @@ impl RustSDK {
         // Create noise keys for the room.
         let room_id = match options.id {
             Some(x) if x.len() > 0 => x,
-            _ => Uuid::new_v4().to_string()
+            _ => Uuid::new_v5(&Uuid::NAMESPACE_DNS, b"tc.ssegning.com").to_string()
         };
         self.noise_key_service.create_key(&room_id)?;
 
@@ -95,7 +95,7 @@ impl RustSDK {
         let swarm_arc = self.room_swarms.contains_key(&data.room_id);
         if swarm_arc {
             log::info!("Swarm for room {} already exists", data.room_id);
-            return Ok(())
+            return Ok(());
         }
 
         log::info!("Starting room {}", data.room_id);

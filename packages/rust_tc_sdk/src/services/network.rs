@@ -59,7 +59,7 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
             )?;
 
             let mdns =
-                mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
+                mdns::async_io::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
 
             let ping = ping::Behaviour::new(ping::Config::new());
 
