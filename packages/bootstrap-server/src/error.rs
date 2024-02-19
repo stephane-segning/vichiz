@@ -4,16 +4,11 @@ use libp2p::noise::Error as BaseNoiseError;
 use libp2p::swarm::derive_prelude::*;
 use libp2p::tls::certificate::GenError;
 
-use crate::services::swarm_controller::ControlMessage;
-
 error_chain! {
     foreign_links {
-        TryRecvErr(tokio::sync::mpsc::error::TryRecvError);
-        EitherError(Either<GenError, BaseNoiseError>);
-        DieselError(diesel::result::Error);
-        InfallibleError(std::convert::Infallible);
-        DieselR2d2Error(diesel::r2d2::Error);
         R2d2Error(r2d2::Error);
+        EitherError(Either<GenError, BaseNoiseError>);
+        InfallibleError(std::convert::Infallible);
         OtherVariant(libp2p::identity::OtherVariantError);
         Decoding(libp2p::identity::DecodingError);
         NoiseError(BaseNoiseError);
@@ -23,7 +18,8 @@ error_chain! {
         SubscriptionError(libp2p::gossipsub::SubscriptionError);
         MultiAddrError(libp2p::multiaddr::Error);
         TransportError(BaseTransportError<std::io::Error>);
-        ControlMessageSendError(std::sync::mpsc::SendError<ControlMessage>);
+        SerdeJsonError(serde_json::Error);
+        DieselError(diesel::result::Error);
     }
 
     errors {
@@ -48,18 +44,18 @@ mod tests {
         }
     }
 
-    // TODO #[test]
+    #[test]
     fn test_diesel_error_conversion() {
         // Simulate a Diesel error (this is just an example; you'd use an actual Diesel function
         // that produces an error in a real test):
-        let simulated_diesel_error: std::result::Result<String, diesel::result::Error> = Err(diesel::result::Error::NotFound);
+        let simulated_diesel_error: std::result::Result<String, BaseNoiseError::InvalidLength> = Err(BaseNoiseError::InvalidLength);
 
         // Convert it to your custom error type:
         let custom_error = simulated_diesel_error.chain_err(|| "failed due to Diesel error");
 
         // Assert on the error type:
         match custom_error {
-            Err(Error(ErrorKind::DieselError(_), _)) => {}
+            Err(Error(ErrorKind::NoiseError(_), _)) => {}
             _ => panic!("Unexpected error type!"),
         }
     }

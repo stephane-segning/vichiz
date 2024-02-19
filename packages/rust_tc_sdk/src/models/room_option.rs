@@ -2,7 +2,7 @@ use derive_more::From;
 use getset::*;
 use serde::*;
 
-#[derive(From, Getters, MutGetters, Setters, Serialize, Debug, Deserialize)]
+#[derive(PartialEq, From, Getters, MutGetters, Setters, Serialize, Debug, Deserialize)]
 pub struct RoomOption {
     #[getset(get_copy = "pub", set = "pub", get_mut = "pub", get = "pub")]
     pub id: Option<String>,
@@ -19,7 +19,7 @@ mod tests {
     fn test_room_option_new_with_id() {
         let name = "Test Room";
 
-        let room_option = RoomOption::from((None, name.clone().to_string()));
+        let room_option = RoomOption::from((None, name.to_string()));
 
         assert_eq!(room_option.id, None);
         assert_eq!(room_option.name, name.to_string());
@@ -29,7 +29,7 @@ mod tests {
     fn test_room_option_new_without_id() {
         let name = "Test Room";
 
-        let room_option = RoomOption::from((None, name.clone().to_string()));
+        let room_option = RoomOption::from((None, name.to_string()));
 
         assert_eq!(room_option.id, None);
         assert_eq!(room_option.name, name.to_string());

@@ -30,3 +30,5 @@ npm-debug.log.*
 
 
 **/*.db
+target
+key_pair.json

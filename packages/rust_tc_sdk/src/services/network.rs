@@ -1,20 +1,23 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::net::Ipv4Addr;
-use std::sync::{Arc, mpsc, Mutex};
+use libp2p::multiaddr::Protocol::{P2p, QuicV1, Tcp, Udp};
+use std::sync::Arc;
 use std::time::Duration;
 
-use futures::{executor::block_on, StreamExt};
 use libp2p::{
     gossipsub,
     identify, identity,
     mdns, Multiaddr,
     noise, ping,
     relay,
-    Swarm, tcp, yamux,
+    rendezvous, Swarm, tcp,
+    yamux,
 };
-use libp2p::multiaddr::Protocol;
+use libp2p::futures::StreamExt;
 use libp2p::swarm::SwarmEvent;
+use tokio::sync::mpsc::Receiver;
+use tokio::sync::Mutex;
 
 use crate::entities::room::Room;
 use crate::models::behaviour::*;
@@ -22,27 +25,24 @@ use crate::models::connection_data::ConnectionData;
 use crate::models::error::*;
 use crate::services::swarm_controller::ControlMessage;
 
-pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
+pub async fn create_private_network(_: Room, config: &ConnectionData, keypair: identity::Keypair) -> Result<Swarm<AppBehaviour>> {
     log::info!("Creating private network");
-    let builder = libp2p::SwarmBuilder::with_existing_identity(keypair)
-        .with_async_std()
+    let mut swarm = libp2p::SwarmBuilder::with_existing_identity(keypair.clone())
+        .with_tokio()
         .with_tcp(
             tcp::Config::default(),
             noise::Config::new,
             yamux::Config::default,
         )?
-        .with_quic();
-
-    let builder = block_on(builder.with_dns())?;
-
-    let mut swarm = builder
+        .with_dns()?
         .with_relay_client(noise::Config::new, yamux::Config::default)?
         .with_behaviour(|key, _| {
             // To content-address message, we can take the hash of message and use it as an ID.
             let message_id_fn = |message: &gossipsub::Message| {
                 let mut s = DefaultHasher::new();
                 message.data.hash(&mut s);
-                gossipsub::MessageId::from(s.finish().to_string())
+                // TODO check this
+                gossipsub::MessageId::from(Vec::from(s.finish().to_be_bytes()))
             };
 
             // Set a custom gossipsub configuration
@@ -59,17 +59,19 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
             )?;
 
             let mdns =
-                mdns::async_io::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
+                mdns::tokio::Behaviour::new(mdns::Config::default(), key.public().to_peer_id())?;
 
             let ping = ping::Behaviour::new(ping::Config::new());
 
             let identify = identify::Behaviour::new(
-                identify::Config::new("/ipfs/0.1.0".into(), key.public()),
+                identify::Config::new("/ssegning/1.0.0".into(), key.public()),
             );
 
             let relay = relay::Behaviour::new(key.public().to_peer_id(), relay::Config::default());
 
-            Ok(AppBehaviour::from((gossip_sub, mdns, ping, identify, relay)))
+            let rendezvous = rendezvous::client::Behaviour::new(key.clone());
+
+            Ok(AppBehaviour::from((gossip_sub, mdns, ping, identify, relay, rendezvous)))
         })
         .unwrap_or_else(|err| panic!("Failed to build behaviour: {:?}", err))
         .with_swarm_config(|cfg| {
@@ -96,14 +98,18 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
             swarm.listen_on(url.parse()?)?;
         }
     } else {
-        let address_to_listen = Multiaddr::from(Ipv4Addr::UNSPECIFIED)
-            .with(Protocol::Tcp(21000));
+        // let address_to_listen = Multiaddr::from(Ipv4Addr::UNSPECIFIED);
+        let address_to_listen = Multiaddr::from(Ipv4Addr::UNSPECIFIED).with(Tcp(4001));
+        log::info!("Will listen on: {:?}", address_to_listen);
+        swarm.listen_on(address_to_listen)?;
+
+        let address_to_listen = Multiaddr::from(Ipv4Addr::UNSPECIFIED).with(Tcp(2001)).with(P2p(keypair.public().to_peer_id()));
         log::info!("Will listen on: {:?}", address_to_listen);
         swarm.listen_on(address_to_listen)?;
     }
 
     if !config.room_multi_address.is_empty() {
-        log::info!("Multiroom: Listening on: {:?}", config.room_multi_address);
+        log::info!("Multi-room: Listening on: {:?}", config.room_multi_address);
         for addr in &config.room_multi_address {
             let remote: Multiaddr = addr.parse()?;
             swarm.dial(remote)?;
@@ -114,28 +120,29 @@ pub fn create_private_network(_: Room, config: &ConnectionData, keypair: identit
     Ok(swarm)
 }
 
-pub fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, receiver: mpsc::Receiver<ControlMessage>) {
+pub async fn run_swarm(swarm: Arc<Mutex<Swarm<AppBehaviour>>>, mut receiver: Receiver<ControlMessage>) -> Result<()> {
     log::info!("Running swarm...");
     loop {
-        if let Ok(ControlMessage::Stop) = receiver.try_recv() {
+        if ControlMessage::Stop == receiver.try_recv()? {
             log::info!("Actually stopping the swarm...");
             break;
         }
 
-        if let Err(e) = process_swarm_events(swarm.clone()) {
+        if let Err(e) = process_swarm_events(swarm.clone()).await {
             log::error!("Error while processing swarm events: {:?}", e);
         }
     };
+
+    Ok(())
 }
 
-fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
+async fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
     log::info!("Processing swarm events...");
 
-    let mut locked_swarm = swarm.lock().unwrap();
+    let mut locked_swarm = swarm.lock().await;
     log::info!("Swarm locked");
 
-
-    match block_on(locked_swarm.select_next_some()) {
+    match locked_swarm.select_next_some().await {
         SwarmEvent::Behaviour(AppBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
             for (peer_id, _multiaddr) in list {
                 log::info!("mDNS discovered a new peer: {peer_id}");
@@ -148,13 +155,36 @@ fn process_swarm_events(swarm: Arc<Mutex<Swarm<AppBehaviour>>>) -> Result<()> {
                 locked_swarm.behaviour_mut().gossip_sub_mut().remove_explicit_peer(&peer_id);
             }
         }
-        SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: _ })) => {
-            log::info!("Ping event from: {:?}", peer);
+        SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: Ok(res) })) => {
+            log::info!("Ping event from: {:?} in {:?}", peer, res.as_millis());
         }
-        SwarmEvent::Behaviour(AppBehaviourEvent::GossipSub(gossipsub::Event::Message { propagation_source: peer_id, message_id: id, message, })) => log::info!(
-            "Got message: '{}' with id: {id} from peer: {peer_id}",
-            String::from_utf8_lossy(&message.data),
-        ),
+        SwarmEvent::Behaviour(AppBehaviourEvent::Ping(ping::Event { peer, connection: _, result: Err(err) })) => {
+            log::info!("Ping failed event from {:?}: {:?}", peer, err);
+        }
+        SwarmEvent::Behaviour(AppBehaviourEvent::GossipSub(gossipsub::Event::Message { propagation_source: peer_id, message_id: id, message, })) => {
+            log::info!("Got message: '{}' with id: {id} from peer: {peer_id}", String::from_utf8_lossy(&message.data));
+        }
+        SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+            log::info!("Connection established with: {peer_id}");
+        }
+        SwarmEvent::Behaviour(AppBehaviourEvent::Rendezvous(rendezvous::client::Event::Discovered { rendezvous_node, .. })) => {
+            log::info!("RDV discovered with: {rendezvous_node}");
+        }
+        SwarmEvent::Behaviour(AppBehaviourEvent::Rendezvous(rendezvous::client::Event::DiscoverFailed { rendezvous_node, .. })) => {
+            log::info!("RDV discover failed with: {rendezvous_node}");
+        }
+        SwarmEvent::Behaviour(AppBehaviourEvent::Rendezvous(rendezvous::client::Event::Registered { rendezvous_node, .. })) => {
+            log::info!("RDV registered with: {rendezvous_node}");
+        }
+        SwarmEvent::Behaviour(AppBehaviourEvent::Rendezvous(rendezvous::client::Event::RegisterFailed { rendezvous_node, .. })) => {
+            log::info!("RDV registration failed with: {rendezvous_node}");
+        }
+        SwarmEvent::Behaviour(AppBehaviourEvent::Rendezvous(rendezvous::client::Event::Expired { peer })) => {
+            log::info!("RDV expired: {peer}");
+        }
+        SwarmEvent::ConnectionClosed { peer_id, .. } => {
+            log::info!("Connection established with: {peer_id}");
+        }
         SwarmEvent::NewListenAddr { address, .. } => {
             log::info!("Local node is listening on {address}");
         }

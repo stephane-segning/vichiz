@@ -4,6 +4,7 @@ import {
   getRooms,
   launchRoom,
   quitRoom,
+  registerListener,
   removeRoom,
   RoomOption,
   startSdk,
@@ -20,9 +21,13 @@ function dbPath() {
   return path.join(parentPath, 'database.db');
 }
 
-export function initDpm() {
-  startSdk({
+export async function initDpm() {
+  await startSdk({
     db_url: dbPath(),
+  });
+
+  await registerListener((type, data) => {
+    console.log('>>> test', type, data);
   });
 }
 
@@ -39,17 +44,21 @@ ipcMain.handle('net-create', async (_, room: RoomOption) => {
 });
 
 ipcMain.handle('net-destroy', async () => {
-  stopSdk(false);
+  await stopSdk(false);
 });
 
 ipcMain.handle('net-remove', async (_, roomId: string) => {
-  removeRoom({ id: roomId });
+  await removeRoom({ id: roomId });
 });
 
 ipcMain.handle('net-open-room', async (_, roomId: string) => {
-  launchRoom({ room_id: roomId, room_listen_on: [], room_multi_address: [] });
+  await launchRoom({
+    room_id: roomId,
+    room_listen_on: [],
+    room_multi_address: [],
+  });
 });
 
 ipcMain.handle('net-close-room', async (_, roomId: string) => {
-  quitRoom({ id: roomId });
+  await quitRoom({ id: roomId });
 });

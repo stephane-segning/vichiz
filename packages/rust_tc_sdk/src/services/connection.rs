@@ -25,7 +25,7 @@ pub fn establish_connection(user_url: Option<String>) -> Pool<ConnectionManager<
     let manager = ConnectionManager::<SqliteConnection>::new(database_url);
 
     log::info!("Creating database pool");
-    let pool = Pool::new(manager).expect("Failed to create database pool");
+    let pool = Pool::builder().build(manager).expect("Failed to create database pool");
 
     log::info!("Running migrations");
     run_migrations(&mut *pool.get().expect("Failed to get a connection from the pool")).expect("Failed to run migrations");

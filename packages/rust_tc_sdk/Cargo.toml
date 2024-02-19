@@ -17,30 +17,30 @@ r2d2 = "0"
 state = "0"
 
 log = "0.4.20"
-env_logger = "0.10.0"
+env_logger = "0.11.1"
 
-futures = "0.3.28"
-async-trait = "0.1.74"
+tokio = { version = "1", features = ["full"] }
 
 diesel = { version = "2.1.3", features = ["sqlite", "r2d2", "libsqlite3-sys", "chrono", "serde_json", "uuid"] }
 diesel_migrations = "2.1.0"
+tokio-diesel = "0"
 libsqlite3-sys = { version = "0", features = ["bundled"] }
 
-serde = "1.0.189"
-serde_json = "1.0.107"
-neon-serde3 = "0.10.0"
+serde = "1"
+serde_json = "1"
+neon-serde3 = "0"
 
-getset = "0.1.2"
+getset = "0"
 derive_more = "0.99.11"
 dirs = "5.0.1"
 
 [dependencies.neon]
 version = "0.10.1"
 default-features = false
-features = ["napi-latest"]
+features = ["napi-latest", "promise-api", "channel-api", "neon-macros", "proc-macros"]
 
 [dependencies.libp2p]
-version = "0.52.4"
+version = "0.53.2"
 features = [
     "noise",
     "mdns",
@@ -52,16 +52,16 @@ features = [
     "dns",
     "gossipsub",
     "ping",
-    "async-std",
     "identify",
     "relay",
     "serde",
     "macros",
-    "quic"
+    "rendezvous",
+    "tokio"
 ]
 
 [dependencies.uuid]
-version = "1.5.0"
+version = "1"
 features = [
     "v4", "v5", "v6", # Lets you generate random UUIDs
     "fast-rng", # Use a faster (but still sufficiently random) RNG

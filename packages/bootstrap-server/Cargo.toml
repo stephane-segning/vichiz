@@ -1,0 +1,37 @@
+[package]
+name = "bootstrap-server"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+getset = "0.1.2"
+derive_more = "0"
+
+serde = { version = "1", features = ["default", "derive"] }
+serde_json = "1"
+serde_derive = "1"
+
+r2d2 = "0"
+diesel = { version = "2.1", features = ["postgres", "r2d2", "postgres_backend", "chrono", "serde_json", "uuid"] }
+diesel_migrations = "2.1.0"
+
+log = "0.4.20"
+dotenv = "0.15.0"
+env_logger = "0"
+
+error-chain = "0"
+uuid = "1.7.0"
+
+[dependencies.tokio]
+version = "1"
+features = [
+    "full",
+]
+
+[dependencies.libp2p]
+version = "0.52.4"
+features = [
+    "full",
+]

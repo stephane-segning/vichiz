@@ -1,21 +1,21 @@
 declare module 'rust-tc-sdk' {
-  export function startSdk(options: RustSDKOptions): void;
+  export function startSdk(options: RustSDKOptions): Promise<void>;
 
-  export function stopSdk(cleanUp: boolean): void;
+  export function stopSdk(cleanUp: boolean): Promise<void>;
 
-  export function createRoom(option: RoomOption): Room;
+  export function createRoom(option: RoomOption): Promise<Room>;
 
-  export function removeRoom(data: RoomId): void;
+  export function removeRoom(data: RoomId): Promise<void>;
 
-  export function launchRoom(data: ConnectionData): void;
+  export function launchRoom(data: ConnectionData): Promise<void>;
 
-  export function getRoom(data: RoomId): Room;
+  export function getRoom(data: RoomId): Promise<Room>;
 
-  export function quitRoom(data: RoomId): void;
+  export function quitRoom(data: RoomId): Promise<void>;
 
-  export function getRooms(): Room[];
+  export function getRooms(): Promise<Room[]>;
 
-  export function registerListener(callback: Callback): void;
+  export function registerListener(callback: Callback): Promise<void>;
 
   export type Callback = (type: string, data: CallbackPayload) => void;
 
